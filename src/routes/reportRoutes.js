@@ -122,12 +122,19 @@ const getReport = async (reportId, includeIconAbsolutePath = true) => {
 const handlePDFStream = (pdfPath, res, customer_name, license_plate, formatedDate, download = false) => {
   const fileStream = fs.createReadStream(pdfPath);
   const fileName = `${customer_name} - ${license_plate} - ${formatedDate}.pdf`;
-  
-  res.setHeader('Content-Disposition', download ?
-    `attachment; filename="${fileName}"` : 
-    `inline; filename="${fileName}"`);
+  const cacheBuster = `${Date.now()}-${path.basename(pdfPath)}`;
 
-  
+  res.setHeader('Content-Disposition', download ?
+    `attachment; filename="${fileName}"` :
+    `inline; filename="${fileName}"`);
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  res.setHeader('X-Accel-Expires', '0');
+  res.setHeader('Last-Modified', new Date().toUTCString());
+  res.setHeader('ETag', `"virga-report-${cacheBuster}"`);
+
   res.setHeader('Content-Type', 'application/pdf');
   fileStream.pipe(res);
   
@@ -212,6 +219,12 @@ router.delete('/delete/:id', isAuthenticated, async (req, res) => {
 
 router.get('/:id', isAuthenticated, async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    res.setHeader('X-Accel-Expires', '0');
+
     const report = await getReport(req.params.id);
 
     logger.debug(`Getting report => ${req.params.id}`);

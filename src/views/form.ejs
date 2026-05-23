@@ -18,6 +18,21 @@
       </div>
     <% } %>
 
+    <div id="autosave-status"
+         class="autosave-status alert alert-info d-none"
+         role="status"
+         aria-live="polite">
+      <div>
+        <i class="fas fa-save"></i>
+        <span id="autosave-status-text">Sauvegarde automatique active.</span>
+      </div>
+      <button type="button"
+              id="clear-draft-btn"
+              class="btn btn-sm btn-outline-secondary">
+        Effacer le brouillon
+      </button>
+    </div>
+
     <!-- Form Sections -->
     <div class="form-sections">
       
@@ -53,8 +68,17 @@
                 <label for="brand">
                   <i class="fas fa-car"></i> Marque :
                 </label>
-                <input type="text" id="brand" name="brand" class="form-control" 
-                      value="<%= data.brand || '' %>" placeholder="ex: Renault" required>
+                <% const formBrandLogo = getVehicleBrandLogo(data.brand); %>
+                <div class="brand-input-group">
+                  <img id="brand-logo-preview"
+                       src="<%= formBrandLogo.src %>"
+                       alt="<%= formBrandLogo.alt %>"
+                       class="vehicle-brand-logo"
+                       loading="lazy"
+                       decoding="async">
+                  <input type="text" id="brand" name="brand" class="form-control"
+                        value="<%= data.brand || '' %>" placeholder="ex: Renault" required>
+                </div>
               </div>
             </div>
             <div class="col-md-3">
@@ -393,5 +417,5 @@
 
 <%- include('partials/footer', {
   showScripts: true,
-  customScripts: ['/static/js/form.js']
+  customScripts: ['/static/js/vehicleBrandLogos.js', '/static/js/form.js']
 }) %>

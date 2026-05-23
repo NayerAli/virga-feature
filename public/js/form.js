@@ -6,6 +6,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const licensePlateInput = document.getElementById('license_plate');
   const dropdown = document.getElementById('search_dropdown');
   const previewPdfBtn = document.getElementById('preview-pdf-template-btn');
+  const autosaveStatus = document.getElementById('autosave-status');
+  const autosaveStatusText = document.getElementById('autosave-status-text');
+  const clearDraftBtn = document.getElementById('clear-draft-btn');
+  const autosaveKey = `virga:inspection-draft:${window.location.pathname}`;
+  const autosaveDelay = 700;
+  const autosaveMaxAgeMs = 7 * 24 * 60 * 60 * 1000;
+  let autosaveTimer = null;
+  let isRestoringDraft = false;
+  let hasClearedDraftForSubmit = false;
 
   const inputsToFormat = [
     {input: 'client_name', type: 'first_letter_only'}, 
@@ -18,6 +27,228 @@ document.addEventListener('DOMContentLoaded', () => {
     {input: 'client_email', type: 'lower'}
   ];
 
+  const getBrandLogo = (brand) => {
+    if (!window.VirgaVehicleBrandLogos) {
+      return {
+        src: '/static/img/vehicle-brands/default.svg',
+        alt: 'Logo marque véhicule'
+      };
+    }
+
+    return window.VirgaVehicleBrandLogos.getVehicleBrandLogo(brand);
+  };
+
+  const escapeHtml = (value) => {
+    const div = document.createElement('div');
+    div.textContent = value || '';
+    return div.innerHTML;
+  };
+
+  const escapeAttribute = (value) => escapeHtml(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  const normalizeLicensePlateSearch = (value) => String(value || '').replace(/[\s-]/g, '').toLowerCase();
+
+  const updateBrandLogoPreview = () => {
+    const brandInput = document.getElementById('brand');
+    const brandLogoPreview = document.getElementById('brand-logo-preview');
+
+    if (!brandInput || !brandLogoPreview) {
+      return;
+    }
+
+    const brandLogo = getBrandLogo(brandInput.value);
+    brandLogoPreview.src = brandLogo.src;
+    brandLogoPreview.alt = brandLogo.alt;
+  };
+
+  const showAutosaveStatus = (message, type = 'info', autoHide = false) => {
+    if (!autosaveStatus || !autosaveStatusText) {
+      return;
+    }
+
+    autosaveStatus.classList.remove('d-none', 'alert-info', 'alert-success', 'alert-warning');
+    autosaveStatus.classList.add(`alert-${type}`);
+    autosaveStatusText.textContent = message;
+
+    if (autoHide) {
+      setTimeout(() => {
+        autosaveStatus.classList.add('d-none');
+      }, 3000);
+    }
+  };
+
+  const getSerializableFormElements = () => Array.from(form.elements).filter(element =>
+    element.name &&
+    !element.disabled &&
+    element.type !== 'submit' &&
+    element.type !== 'button' &&
+    element.type !== 'file'
+  );
+
+  const serializeForm = () => {
+    const draft = {};
+
+    getSerializableFormElements().forEach(element => {
+      if (element.type === 'radio') {
+        if (element.checked) {
+          draft[element.name] = element.value;
+        }
+        return;
+      }
+
+      if (element.type === 'checkbox') {
+        if (!draft[element.name]) {
+          draft[element.name] = [];
+        }
+
+        if (element.checked) {
+          draft[element.name].push(element.value);
+        }
+        return;
+      }
+
+      draft[element.name] = element.value;
+    });
+
+    return draft;
+  };
+
+  const hasMeaningfulDraftData = (draft) => Object.entries(draft).some(([key, value]) => {
+    if (key === 'is_company' || key === 'customer_id') {
+      return false;
+    }
+
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    return String(value || '').trim().length > 0;
+  });
+
+  const saveDraft = () => {
+    if (!form || isRestoringDraft || hasClearedDraftForSubmit) {
+      return;
+    }
+
+    try {
+      const draft = serializeForm();
+      if (!hasMeaningfulDraftData(draft)) {
+        window.localStorage.removeItem(autosaveKey);
+        return;
+      }
+
+      window.localStorage.setItem(autosaveKey, JSON.stringify({
+        savedAt: Date.now(),
+        path: window.location.pathname,
+        data: draft
+      }));
+
+      const savedAt = new Date().toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      showAutosaveStatus(`Brouillon sauvegardé automatiquement à ${savedAt}.`, 'info');
+    } catch (error) {
+      console.warn('Autosave unavailable', error);
+      showAutosaveStatus('Sauvegarde automatique indisponible sur ce navigateur.', 'warning');
+    }
+  };
+
+  const scheduleDraftSave = () => {
+    if (!form || isRestoringDraft || hasClearedDraftForSubmit) {
+      return;
+    }
+
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(saveDraft, autosaveDelay);
+  };
+
+  const applyDraftToForm = (draft) => {
+    isRestoringDraft = true;
+
+    getSerializableFormElements().forEach(element => {
+      if (!Object.prototype.hasOwnProperty.call(draft, element.name)) {
+        return;
+      }
+
+      const value = draft[element.name];
+      if (element.type === 'radio') {
+        element.checked = element.value === value;
+        return;
+      }
+
+      if (element.type === 'checkbox') {
+        element.checked = Array.isArray(value) && value.includes(element.value);
+        return;
+      }
+
+      element.value = value;
+    });
+
+    updateBrandLogoPreview();
+    isRestoringDraft = false;
+  };
+
+  const restoreDraftIfAvailable = () => {
+    if (!form) {
+      return;
+    }
+
+    try {
+      const rawDraft = window.localStorage.getItem(autosaveKey);
+      if (!rawDraft) {
+        return;
+      }
+
+      const draftPayload = JSON.parse(rawDraft);
+      if (!draftPayload.savedAt || !draftPayload.data) {
+        window.localStorage.removeItem(autosaveKey);
+        return;
+      }
+
+      if (Date.now() - draftPayload.savedAt > autosaveMaxAgeMs) {
+        window.localStorage.removeItem(autosaveKey);
+        return;
+      }
+
+      applyDraftToForm(draftPayload.data);
+      const savedAt = new Date(draftPayload.savedAt).toLocaleString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      showAutosaveStatus(`Brouillon restauré (${savedAt}).`, 'success');
+    } catch (error) {
+      console.warn('Draft restore failed', error);
+      window.localStorage.removeItem(autosaveKey);
+    }
+  };
+
+  const clearDraft = (message = 'Brouillon effacé.') => {
+    try {
+      window.localStorage.removeItem(autosaveKey);
+      showAutosaveStatus(message, 'success', true);
+    } catch (error) {
+      console.warn('Draft clear failed', error);
+    }
+  };
+
+  const initAutosave = () => {
+    if (!form) {
+      return;
+    }
+
+    form.addEventListener('input', scheduleDraftSave);
+    form.addEventListener('change', scheduleDraftSave);
+
+    if (clearDraftBtn) {
+      clearDraftBtn.addEventListener('click', () => clearDraft('Brouillon supprimé.'));
+    }
+  };
+
+  initAutosave();
+
   // If the form is with report id (/report/:id), fill the form with the data
   const id = window.location.href.split('/').pop();
   if (id != 'form') {
@@ -26,13 +257,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch report data
     fetch(`/report/api-inspection-report/${id}`)
       .then(response => response.json())
-      .then(data => fillForm(data));
+      .then(data => {
+        fillForm(data);
+        restoreDraftIfAvailable();
+      });
     
     // Set form action to update instead of submit
     form.action = `/form/update/${id}`;
 
     // Hide preview PDF button to avoid double submission
     previewPdfBtn.hidden = true;
+  } else {
+    restoreDraftIfAvailable();
   }
 
   // Form submission handler
@@ -45,6 +281,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } else {
           setUnsetRadioInputs();
+          saveDraft();
+          hasClearedDraftForSubmit = true;
+          clearDraft('Rapport envoyé, brouillon supprimé.');
 
           const formData = new FormData(form);
 
@@ -155,6 +394,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inputElement) {
       inputElement.addEventListener('input', (e) => {
         formatInput(e.target, inputToFormat.type);
+
+        if (inputToFormat.input === 'brand') {
+          updateBrandLogoPreview();
+        }
       });
     }
   });
@@ -392,14 +635,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      for (let ir in data.inspection_results){ 
-        const radioName = `${data.inspection_results[ir].category}_${data.inspection_results[ir].item_id}_${data.inspection_results[ir].value.value}`;
-        const radio = document.getElementById(radioName);
-        // console.log('Building radio:', radioName);
-        if (radio) {
-          radio.checked = true;
+      if (Array.isArray(data.inspection_results)) {
+        for (let ir in data.inspection_results) {
+          const radioName = `${data.inspection_results[ir].category}_${data.inspection_results[ir].item_id}_${data.inspection_results[ir].value.value}`;
+          const radio = document.getElementById(radioName);
+          // console.log('Building radio:', radioName);
+          if (radio) {
+            radio.checked = true;
+          }
         }
       }
+
+      updateBrandLogoPreview();
+
       if (data.mechanics !== '{}' && Object.prototype.hasOwnProperty.call(data, 'mechanics')) {
         const parsedMechanics = JSON.parse(data.mechanics);
 
@@ -478,11 +726,15 @@ document.addEventListener('DOMContentLoaded', () => {
       filteredVehicles = [...allVehicles];
     } else {
       const searchLower = searchText.toLowerCase();
-      filteredVehicles = allVehicles.filter(vehicule => 
-        vehicule.license_plate.toLowerCase().includes(searchLower) ||
-        vehicule.brand.toLowerCase().includes(searchLower) ||
-        vehicule.model.toLowerCase().includes(searchLower)
-      );
+      const normalizedPlateSearch = normalizeLicensePlateSearch(searchText);
+      filteredVehicles = allVehicles.filter(vehicule => {
+        const normalizedVehiclePlate = normalizeLicensePlateSearch(vehicule.license_plate);
+
+        return (vehicule.license_plate || '').toLowerCase().includes(searchLower) ||
+          normalizedVehiclePlate.includes(normalizedPlateSearch) ||
+          (vehicule.brand || '').toLowerCase().includes(searchLower) ||
+          (vehicule.model || '').toLowerCase().includes(searchLower);
+      });
     }
     updateDropdown();
   };
@@ -495,17 +747,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filteredVehicles.length === 0) {
       content.innerHTML = '<div class="search-item">Aucun véhicule trouvé</div>';
     } else {
-      content.innerHTML = filteredVehicles.map(vehicule => `
+      content.innerHTML = filteredVehicles.map(vehicule => {
+        const brandLogo = getBrandLogo(vehicule.brand);
+        const safeLicensePlate = escapeAttribute(vehicule.license_plate);
+        const safeVehicleId = escapeAttribute(vehicule.vehicule_id);
+        const vehicleLabel = `${escapeHtml(vehicule.brand)} ${escapeHtml(vehicule.model)}`.trim();
+
+        return `
         <div class="search-item">
-          <div class="search-item-text" data-immat="${vehicule.license_plate}" data-id="${vehicule.vehicule_id}">
-            <div class="search-item-title">${vehicule.license_plate}</div>
-            <div class="search-item-subtitle">${vehicule.brand} ${vehicule.model}</div>
+          <div class="search-item-text" data-immat="${safeLicensePlate}" data-id="${safeVehicleId}">
+            <img src="${brandLogo.src}"
+                 alt="${escapeAttribute(brandLogo.alt)}"
+                 class="vehicle-brand-logo vehicle-brand-logo-sm"
+                 loading="lazy"
+                 decoding="async">
+            <div>
+              <div class="search-item-title">${safeLicensePlate}</div>
+              <div class="search-item-subtitle">${vehicleLabel}</div>
+            </div>
           </div>
-          <div class="search-item-report" data-immat="${vehicule.license_plate}">
+          <div class="search-item-report" data-immat="${safeLicensePlate}">
             <i class="fas fa-list"></i>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
     
     dropdown.classList.remove('d-none');
@@ -533,11 +799,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      const response = await fetch(`/form/api-vehicule-details/${id}`);
+      const response = await fetch(`/form/api-vehicule-details/${encodeURIComponent(id)}`);
       const data = await response.json();
 
       fillForm(data.vehicule);
       fillForm(data.customer);
+      saveDraft();
 
       if (data.success) {
         searchResult.innerHTML = `
@@ -570,6 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Fetch vehicules on page load
+  updateBrandLogoPreview();
   fetchVehicles();
 
   // Customer Search Functionality
@@ -682,6 +950,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('client_email').value = customer.email || '';
         document.getElementById('client_address').value = customer.address || '';
         document.getElementById('is_company').checked = customer.is_company;
+        saveDraft();
 
         // Add a hidden field to indicate this is a customer reassignment
         // Only if selecting a different customer than the original one

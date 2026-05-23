@@ -46,7 +46,7 @@
         </div>
         <div class="report-actions">
           <div class="floating-menu">
-            <a href="/report/preview/<%= report.report_id %>" 
+            <a href="/report/preview/<%= report.report_id %>?fresh=<%= Date.now() %>"
                class="btn btn-light btn-sm mr-2"
                target="_blank">
               <i class="fas fa-eye"></i> Aperçu
@@ -55,7 +55,7 @@
               class="btn btn-light btn-sm mr-2">
               <i class="fas fa-edit"></i> Modifier
             </a>
-            <a href="/report/download/<%= report.report_id %>" 
+            <a href="/report/download/<%= report.report_id %>?fresh=<%= Date.now() %>"
                class="btn btn-light btn-sm">
               <i class="fas fa-download"></i> Télécharger
             </a>
@@ -126,7 +126,17 @@
               <div class="col-md-6">
                 <div class="info-item">
                   <label><i class="fa-solid fa-trademark"></i> Marque :</label>
-                  <div class="form-control-static"><%= report.brand || 'N/A' %></div>
+                  <% const reportBrandLogo = getVehicleBrandLogo(report.brand); %>
+                  <div class="form-control-static">
+                    <div class="vehicle-brand-cell">
+                      <img src="<%= reportBrandLogo.src %>"
+                           alt="<%= reportBrandLogo.alt %>"
+                           class="vehicle-brand-logo"
+                           loading="lazy"
+                           decoding="async">
+                      <span><%= report.brand || 'N/A' %></span>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="col-md-6">

@@ -241,7 +241,7 @@ router.post('/submit-preview', isAuthenticated, async (req, res) => {
     const userId = req.user.id;
    
     const reportId = await submitForm(req, res, userId, true);
-    return res.redirect(`/report/preview/${reportId}`);
+    return res.redirect(`/report/preview/${reportId}?fresh=${Date.now()}`);
   
   } catch (error) {
     res.status(500).render('form', {

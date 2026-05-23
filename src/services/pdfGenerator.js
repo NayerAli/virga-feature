@@ -2,6 +2,9 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
+const {
+  getVehicleBrandLogoPath
+} = require('../utils/vehicleBrandLogos');
 const SVGtoPDF = require('svg-to-pdfkit');
 
 PDFDocument.prototype.addSVG = function(svg, x, y, options) {
@@ -210,14 +213,41 @@ const drawHeader = (doc, report) => {
   return headerHeight + 5;
 };
 
+const drawInlineVehicleBrandLogo = (doc, logoPath, x, y, size = 12) => {
+  if (!logoPath || !fs.existsSync(logoPath)) {
+    return false;
+  }
+
+  try {
+    const svg = fs.readFileSync(logoPath, 'utf8');
+
+    doc.save();
+    doc.addSVG(svg, x, y, {
+      width: size,
+      height: size,
+      preserveAspectRatio: 'xMidYMid meet'
+    });
+    doc.restore();
+
+    return true;
+  } catch (error) {
+    logger.warn('Unable to render vehicle brand logo in PDF', {
+      error: error.message,
+      logoPath
+    });
+    return false;
+  }
+};
+
 const drawInfoSection = (doc, report, startY) => {
   const sectionWidth = 545;
   const infoHeight = 16;
   const columnWidth = (sectionWidth - 60) / 2;
+  const brandLogoPath = getVehicleBrandLogoPath(report.brand);
 
   const leftColumnInfo = [
     { label: 'Immatriculation', value: report.license_plate, bold: true },
-    { label: 'Marque', value: report.brand || 'N/A' },
+    { label: 'Marque', value: report.brand || 'N/A', renderAsBrandCell: true },
     { label: 'Modèle', value: report.model || 'N/A' },
     { label: 'Kilométrage', value: report.mileage ? `${report.mileage} km` : 'N/A' },
     { label: 'Mise en circulation', value: report.first_registration_date ? 
@@ -257,16 +287,47 @@ const drawInfoSection = (doc, report, startY) => {
   
   // Draw left column
   leftColumnInfo.forEach(info => {
+    const labelX = 35;
+    const valueX = 85;
+    const valueWidth = columnWidth - 70;
+
     doc.font(fonts.medium)
       .fontSize(9)
       .fillColor(colors.primary.main)
-      .text(info.label, 35, infoY);
+      .text(info.label, labelX, infoY);
 
-    doc.font(info.bold ? fonts.bold : fonts.regular)
-      .text(info.value, 35, infoY, {
-        width: columnWidth - 20,
-        align: 'right'
+    if (info.renderAsBrandCell) {
+      const brandText = info.value || 'N/A';
+      const logoSize = 10;
+      const logoGap = 4;
+      const logoPath = brandLogoPath || getVehicleBrandLogoPath('');
+
+      doc.font(fonts.regular)
+        .fontSize(9)
+        .fillColor(colors.primary.main);
+
+      const textWidth = Math.ceil(doc.widthOfString(brandText));
+      const brandBlockWidth = textWidth + logoSize + logoGap;
+      const brandBlockX = Math.max(valueX, valueX + valueWidth - brandBlockWidth);
+      const logoX = brandBlockX;
+      const textX = brandBlockX + logoSize + logoGap;
+      const textY = infoY;
+      const logoY = infoY - 2;
+
+      drawInlineVehicleBrandLogo(doc, logoPath, logoX, logoY, logoSize);
+
+      doc.text(brandText, textX, textY, {
+        width: textWidth,
+        align: 'left'
       });
+    } else {
+      doc.font(info.bold ? fonts.bold : fonts.regular)
+        .text(info.value, valueX, infoY, {
+          width: valueWidth,
+          align: 'right'
+        });
+    }
+
     infoY += infoHeight;
   });
 
@@ -446,7 +507,8 @@ const generatePDF = (report) => {
 
       const date = new Date();
       const formattedDate = `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
-      const tempFileName = `${report.license_plate}_${formattedDate}.pdf`;
+      const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const tempFileName = `${report.license_plate}_${formattedDate}_${uniqueSuffix}.pdf`;
       const pdfPath = path.join(__dirname, '..', '..', 'generated_reports', tempFileName);
       const writeStream = fs.createWriteStream(pdfPath);
 

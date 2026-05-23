@@ -207,7 +207,7 @@
                   %>
                   <tr class="hover:bg-gray-50">
                     <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                      <a href="/report/<%= report.report_id %>" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline flex items-center">
+                      <a href="/report/<%= report.report_id %>?fresh=<%= Date.now() %>" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline flex items-center">
                         <i class="fas fa-external-link-alt mr-1 text-xs"></i>
                         <%= report.report_id %>
                       </a>

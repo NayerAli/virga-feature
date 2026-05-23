@@ -45,7 +45,7 @@
       <div class="header-actions">
         <div class="search-box flex items-center bg-white p-1 rounded-lg md:min-w-[400px]">
           <i class="fas fa-search text-gray-500"></i>
-          <input type="text" id="searchReports" placeholder="Rechercher un rapport...">
+          <input type="text" id="searchReports" placeholder="Rechercher plaque, client, marque..." value="<%= typeof search !== 'undefined' ? search : '' %>">
         </div>
       </div>
     </div>
@@ -79,10 +79,20 @@
         <tbody>
           <% if (reports && reports.length > 0) { %>
             <% reports.forEach(function(report) { %>
-              <tr class="report-row" data-report="<%= JSON.stringify(report) %>">
+              <tr class="report-row">
                 <td class="license-plate"><%= report.license_plate %></td>
                 <td><%= report.client_name %></td>
-                <td><%= report.brand && report.model ? `${report.brand} ${report.model}` : 'N/A' %></td>
+                <td>
+                  <% const dashboardBrandLogo = getVehicleBrandLogo(report.brand); %>
+                  <div class="vehicle-brand-cell">
+                    <img src="<%= dashboardBrandLogo.src %>"
+                         alt="<%= dashboardBrandLogo.alt %>"
+                         class="vehicle-brand-logo vehicle-brand-logo-sm"
+                         loading="lazy"
+                         decoding="async">
+                    <span><%= report.brand && report.model ? `${report.brand} ${report.model}` : 'N/A' %></span>
+                  </div>
+                </td>
                 <td><%= new Date(report.created_at).toLocaleDateString('fr-FR') %></td>
                 <td>
                   <div class="action-buttons">
@@ -91,13 +101,13 @@
                        title="Voir le rapport">
                       <i class="fas fa-eye"></i>
                     </a>
-                    <a href="/report/preview/<%= report.report_id %>" 
+                    <a href="/report/preview/<%= report.report_id %>?fresh=<%= Date.now() %>"
                        class="action-btn preview" 
                        title="Prévisualiser PDF"
                        target="_blank">
                       <i class="fas fa-file-pdf"></i>
                     </a>
-                    <a href="/report/download/<%= report.report_id %>" 
+                    <a href="/report/download/<%= report.report_id %>?fresh=<%= Date.now() %>"
                        class="action-btn download" 
                        title="Télécharger">
                       <i class="fas fa-download"></i>
@@ -118,7 +128,7 @@
             <% }); %>
           <% } else { %>
             <tr>
-              <td colspan="4" class="no-reports">
+              <td colspan="5" class="no-reports">
                 <i class="fas fa-info-circle"></i>
                 <p>Aucun rapport trouvé</p>
                 <a href="/form" class="btn btn-primary mt-3">
@@ -130,6 +140,38 @@
           <% } %>
         </tbody>
       </table>
+    </div>
+
+    <div class="dashboard-pagination" id="dashboardPagination" aria-label="Pagination des rapports">
+      <div class="pagination-summary">
+        <% if (pagination && pagination.totalReports > 0) { %>
+          Rapports <strong><%= pagination.startItem %></strong> à <strong><%= pagination.endItem %></strong>
+          sur <strong><%= pagination.totalReports %></strong>
+        <% } else { %>
+          Aucun rapport à afficher
+        <% } %>
+      </div>
+      <% if (pagination && pagination.totalPages > 1) { %>
+        <nav class="pagination-controls" aria-label="Navigation entre les pages de rapports">
+          <a class="pagination-btn <%= pagination.hasPreviousPage ? '' : 'disabled' %>"
+             href="/dashboard?page=<%= pagination.previousPage %>&search=<%= encodeURIComponent(typeof search !== 'undefined' ? search : '') %>"
+             aria-label="Page précédente"
+             <%= pagination.hasPreviousPage ? '' : 'aria-disabled="true" tabindex="-1"' %>>
+            <i class="fas fa-chevron-left"></i>
+            Précédent
+          </a>
+          <span class="pagination-current">
+            Page <strong><%= pagination.currentPage %></strong> / <strong><%= pagination.totalPages %></strong>
+          </span>
+          <a class="pagination-btn <%= pagination.hasNextPage ? '' : 'disabled' %>"
+             href="/dashboard?page=<%= pagination.nextPage %>&search=<%= encodeURIComponent(typeof search !== 'undefined' ? search : '') %>"
+             aria-label="Page suivante"
+             <%= pagination.hasNextPage ? '' : 'aria-disabled="true" tabindex="-1"' %>>
+            Suivant
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        </nav>
+      <% } %>
     </div>
   </section>
 
@@ -170,5 +212,5 @@
 
 <%- include('partials/footer', {
   showScripts: true,
-  customScripts: ['/static/js/dashboard.js']
+  customScripts: ['/static/js/vehicleBrandLogos.js', '/static/js/dashboard.js']
 }) %>

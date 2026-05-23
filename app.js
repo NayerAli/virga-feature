@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const { initializeDatabase } = require('./src/config/database');
+const { getVehicleBrandLogo } = require('./src/utils/vehicleBrandLogos');
 const logger = require('./src/utils/logger');
 const https = require('https');
 const fs = require('fs');
@@ -96,7 +97,17 @@ app.use(helmet({
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/static', express.static(path.join(__dirname, 'public')));
+app.use('/static', express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.includes(`${path.sep}vehicle-brands${path.sep}`)) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+      res.setHeader('X-Accel-Expires', '0');
+    }
+  }
+}));
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 
 // Session configuration
@@ -132,6 +143,7 @@ app.use((req, res, next) => {
   res.locals.success = req.flash('success') || [];
   res.locals.error = req.flash('error') || [];
   res.locals.user = req.session.user || null;
+  res.locals.getVehicleBrandLogo = getVehicleBrandLogo;
   res.locals.company = {
     name: process.env.COMPANY_NAME,
     address: process.env.COMPANY_ADDRESS,
