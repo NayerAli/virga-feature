@@ -895,21 +895,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       
-      resultsContainer.innerHTML = filteredCustomers.map(customer => `
+      resultsContainer.innerHTML = filteredCustomers.map(customer => {
+        const safeCustomerId = escapeAttribute(customer.customer_id);
+        const safeCustomerName = escapeHtml(customer.name);
+        const safeCustomerPhone = escapeHtml(customer.phone);
+        const safeCustomerEmail = escapeHtml(customer.email);
+        const safeCustomerAddress = escapeHtml(customer.address);
+
+        return `
         <div class="customer-result p-2 hover:bg-gray-100 cursor-pointer" 
-             data-id="${customer.customer_id}"
-             data-name="${customer.name}"
-             data-phone="${customer.phone || ''}"
-             data-address="${customer.address || ''}">
-          <div class="font-medium"><i class="fas fa-user mr-2"></i>${customer.name}</div>
+             data-id="${safeCustomerId}"
+             data-name="${escapeAttribute(customer.name)}"
+             data-phone="${escapeAttribute(customer.phone || '')}"
+             data-address="${escapeAttribute(customer.address || '')}">
+          <div class="font-medium"><i class="fas fa-user mr-2"></i>${safeCustomerName}</div>
           <div class="text-sm text-gray-600">
-            ${customer.phone ? `<i class="fas fa-phone mr-2"></i>${customer.phone}` : ''}
-            ${customer.email ? `<br><i class="fas fa-envelope mr-2"></i>${customer.email}` : ''}
-            ${customer.address ? `<br><i class="fas fa-map-marker-alt mr-2"></i>${customer.address}` : ''}
+            ${customer.phone ? `<i class="fas fa-phone mr-2"></i>${safeCustomerPhone}` : ''}
+            ${customer.email ? `<br><i class="fas fa-envelope mr-2"></i>${safeCustomerEmail}` : ''}
+            ${customer.address ? `<br><i class="fas fa-map-marker-alt mr-2"></i>${safeCustomerAddress}` : ''}
           </div>
         </div>
         <div class="border-b border-gray-200"></div>
-      `).join('');
+      `;
+      }).join('');
       
       customerDropdown.classList.remove('d-none');
     } catch (error) {

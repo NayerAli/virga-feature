@@ -109,6 +109,53 @@ const formatDates = (report) => {
   return report;
 };
 
+const parseMechanics = (mechanicsValue) => {
+  if (!mechanicsValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(mechanicsValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    logger.warn('Unable to parse report mechanics list', {
+      error_message: error.message
+    });
+    return [];
+  }
+};
+
+const canAccessReport = (report, user) => {
+  if (!report || !user) {
+    return false;
+  }
+
+  const userRole = String(user.role || '').toLowerCase();
+  if (userRole === 'admin') {
+    return true;
+  }
+
+  if (String(report.created_by) === String(user.id)) {
+    return true;
+  }
+
+  const mechanicIds = parseMechanics(report.mechanics).map(String);
+  return mechanicIds.includes(String(user.id));
+};
+
+const requireReportAccess = (report, req, res) => {
+  if (canAccessReport(report, req.session.user)) {
+    return true;
+  }
+
+  res.status(403).render('error', {
+    message: 'Accès interdit à ce rapport',
+    errors: [],
+    user: req.session.user
+  });
+  return false;
+};
+
 const getReport = async (reportId, includeIconAbsolutePath = true) => {
   const db = getDatabase();
   return new Promise((resolve, reject) => {
@@ -158,6 +205,10 @@ router.get('/preview/:id', isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: 'Report not found' });
     }
 
+    if (!requireReportAccess(report, req, res)) {
+      return;
+    }
+
     formatDates(report);
     const pdfPath = await generatePDF(report);
     const formatedDate = report.created_at.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -173,6 +224,10 @@ router.get('/download/:id', isAuthenticated, async (req, res) => {
     const report = await getReport(req.params.id);
     if (!report) {
       return res.status(404).send('Report not found');
+    }
+
+    if (!requireReportAccess(report, req, res)) {
+      return;
     }
 
     formatDates(report);
@@ -191,6 +246,21 @@ router.delete('/delete/:id', isAuthenticated, async (req, res) => {
   const reportId = req.params.id;
 
   try {
+    const report = await getReport(reportId);
+    if (!report) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Report not found' 
+      });
+    }
+
+    if (!canAccessReport(report, req.session.user)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès interdit à ce rapport'
+      });
+    }
+
     await new Promise((resolve, reject) => {
       db.serialize(() => {
         db.run('BEGIN TRANSACTION');
@@ -238,6 +308,10 @@ router.get('/:id', isAuthenticated, async (req, res) => {
       });
     }
 
+    if (!requireReportAccess(report, req, res)) {
+      return;
+    }
+
     const created_by = (await getUserById(report.created_by));
     logger.debug(`Created by: ${created_by?.username} with id: ${report.created_by}`);
 
@@ -277,6 +351,10 @@ router.get('/api-inspection-report/:id', isAuthenticated, async (req, res) => {
     const report = await getReport(req.params.id, false);
     if (!report) {
       return res.status(404).json({ error: `Report ${req.params.id} not found` });
+    }
+
+    if (!canAccessReport(report, req.session.user)) {
+      return res.status(403).json({ error: 'Accès interdit à ce rapport' });
     }
     
     res.json(report);

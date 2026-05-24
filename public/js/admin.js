@@ -2,6 +2,14 @@
 
 var searchTimeout;
 
+const escapeHtml = (value) => {
+  const div = document.createElement('div');
+  div.textContent = value || '';
+  return div.innerHTML;
+};
+
+const escapeAttribute = (value) => escapeHtml(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 // Input formatting configurations
 const inputsToFormat = [
   // User form
@@ -136,7 +144,6 @@ const clearError = (input) => {
 // eslint-disable-next-line no-unused-vars
 const validateForm = (type) => {
   let isValid = true;
-  console.log(`Starting validation for type: ${type}`);
 
   // Clear all previous errors
   document.querySelectorAll('.error-message').forEach(error => error.remove());
@@ -144,7 +151,7 @@ const validateForm = (type) => {
 
   if (type === 'user') {
     const userId = document.getElementById('userId')?.value;
-    console.log(`User ID: ${userId ? 'Editing user ' + userId : 'Creating new user'}`);
+    if (window.__VIRGA_DEBUG__) console.log(`User ID: ${userId ? 'Editing user ' + userId : 'Creating new user'}`);
 
     // For new users, validate all fields. For edits, only validate modified fields
     const form = document.getElementById('userForm');
@@ -152,25 +159,24 @@ const validateForm = (type) => {
     const original = originalData ? JSON.parse(originalData) : {};
     const formData = new FormData(form);
     
-    // Log the original data and current form data
-    console.log('Original data:', original);
-    console.log('Current form data:', Object.fromEntries(formData));
+    // Avoid logging sensitive form contents in production.
+    // Avoid logging sensitive form contents in production.
 
     // For new users, check all required fields
     if (!userId) {
-      console.log('Validating new user - checking all required fields');
+      if (window.__VIRGA_DEBUG__) console.log('Validating new user - checking all required fields');
       const requiredFields = ['first_name', 'last_name', 'username', 'email', 'role', 'password'];
       requiredFields.forEach(field => {
         const input = document.getElementById(field);
         if (!input?.value?.trim()) {
-          console.log(`Required field missing: ${field}`);
+          if (window.__VIRGA_DEBUG__) console.log(`Required field missing: ${field}`);
           showError(input, 'Ce champ est requis');
           isValid = false;
         }
       });
     } else {
       // For edits, only validate fields that have been modified
-      console.log('Validating user edit - checking modified fields');
+      if (window.__VIRGA_DEBUG__) console.log('Validating user edit - checking modified fields');
       const modifiedFields = [];
       
       if (formData.get('first_name') !== original.first_name) modifiedFields.push('first_name');
@@ -180,16 +186,16 @@ const validateForm = (type) => {
       if (formData.get('role') !== original.role) modifiedFields.push('role');
       if (formData.get('password')) modifiedFields.push('password');
       
-      console.log('Modified fields:', modifiedFields);
+      if (window.__VIRGA_DEBUG__) console.log('Modified fields:', modifiedFields);
     }
 
     // Validate email format if provided or modified
     const emailInput = document.getElementById('email');
     if (emailInput?.value.trim() && (!userId || emailInput.value !== original.email)) {
-      console.log('Validating email format');
+      if (window.__VIRGA_DEBUG__) console.log('Validating email format');
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(emailInput.value.trim())) {
-        console.log('Invalid email format');
+        if (window.__VIRGA_DEBUG__) console.log('Invalid email format');
         showError(emailInput, 'Format d\'email invalide');
         isValid = false;
       }
@@ -198,10 +204,10 @@ const validateForm = (type) => {
     // Validate role if it's a new user or if role is being changed
     const roleInput = document.getElementById('role');
     if (roleInput?.value.trim() && (!userId || roleInput.value !== original.role)) {
-      console.log('Validating role');
+      if (window.__VIRGA_DEBUG__) console.log('Validating role');
       const validRoles = ['admin', 'mechanic', 'user'];
       if (!validRoles.includes(roleInput.value.trim().toLowerCase())) {
-        console.log('Invalid role');
+        if (window.__VIRGA_DEBUG__) console.log('Invalid role');
         showError(roleInput, 'Rôle invalide');
         isValid = false;
       }
@@ -210,26 +216,26 @@ const validateForm = (type) => {
     // Username format validation if provided or modified
     const usernameInput = document.getElementById('username');
     if (usernameInput?.value.trim()) {
-      console.log('Validating username format');
-      console.log('Current username:', usernameInput.value);
+      if (window.__VIRGA_DEBUG__) console.log('Validating username format');
+      if (window.__VIRGA_DEBUG__) console.log('Current username:', usernameInput.value);
       
       // Allow letters, numbers, dots, underscores, and hyphens
       const usernameRegex = /^[a-zA-Z0-9._-]+$/;
       const username = usernameInput.value.trim().toLowerCase();
       
-      console.log('Lowercase username:', username);
-      console.log('Regex test result:', usernameRegex.test(username));
+      if (window.__VIRGA_DEBUG__) console.log('Lowercase username:', username);
+      if (window.__VIRGA_DEBUG__) console.log('Regex test result:', usernameRegex.test(username));
       
       if (!usernameRegex.test(username)) {
-        console.log('Invalid username format');
+        if (window.__VIRGA_DEBUG__) console.log('Invalid username format');
         showError(usernameInput, 'Le nom d\'utilisateur ne peut contenir que des lettres, chiffres, points, tirets et underscores');
         isValid = false;
       } else if (username.length < 3) {
-        console.log('Username too short');
+        if (window.__VIRGA_DEBUG__) console.log('Username too short');
         showError(usernameInput, 'Le nom d\'utilisateur doit contenir au moins 3 caractères');
         isValid = false;
       } else if (username.length > 50) {
-        console.log('Username too long');
+        if (window.__VIRGA_DEBUG__) console.log('Username too long');
         showError(usernameInput, 'Le nom d\'utilisateur ne peut pas dépasser 50 caractères');
         isValid = false;
       }
@@ -239,19 +245,19 @@ const validateForm = (type) => {
     const passwordInput = document.getElementById('password');
     const confirmPasswordInput = document.getElementById('confirmPassword');
     if (passwordInput?.value) {
-      console.log('Validating password');
+      if (window.__VIRGA_DEBUG__) console.log('Validating password');
       if (passwordInput.value.length < 6) {
-        console.log('Password too short');
+        if (window.__VIRGA_DEBUG__) console.log('Password too short');
         showError(passwordInput, 'Le mot de passe doit contenir au moins 6 caractères');
         isValid = false;
       }
       if (passwordInput.value !== confirmPasswordInput?.value) {
-        console.log('Passwords do not match');
+        if (window.__VIRGA_DEBUG__) console.log('Passwords do not match');
         showError(confirmPasswordInput, 'Les mots de passe ne correspondent pas');
         isValid = false;
       }
     } else if (!userId) {
-      console.log('Password required for new user');
+      if (window.__VIRGA_DEBUG__) console.log('Password required for new user');
       showError(passwordInput, 'Le mot de passe est requis pour un nouvel utilisateur');
       isValid = false;
     }
@@ -318,12 +324,12 @@ const validateForm = (type) => {
     }
   }
 
-  console.log(`Validation ${isValid ? 'passed' : 'failed'}`);
+  if (window.__VIRGA_DEBUG__) console.log(`Validation ${isValid ? 'passed' : 'failed'}`);
   return isValid;
 };
 
 const openModal = (type, id = null) => {
-  console.log('Fetching data form entity', type, id);
+  if (window.__VIRGA_DEBUG__) console.log('Fetching data form entity', type, id);
 
   const modalContainer = document.getElementById('modalContainer');
   const modal = document.getElementById(`${type}Modal`);
@@ -470,9 +476,9 @@ const fetchEntityData = async (type, id) => {
         customerInfo.innerHTML = `
           <div class="flex items-center justify-between">
             <div>
-              <div><i class="fas fa-user mr-3"></i>${vehicule.customer.name}</div>
-              ${vehicule.customer.phone ? `<div><i class="fas fa-phone mr-3"></i>${vehicule.customer.phone}</div>` : ''}
-              ${vehicule.customer.address ? `<div><i class="fas fa-map-marker-alt mr-3"></i>${vehicule.customer.address}</div>` : ''}
+              <div><i class="fas fa-user mr-3"></i>${escapeHtml(vehicule.customer.name)}</div>
+              ${vehicule.customer.phone ? `<div><i class="fas fa-phone mr-3"></i>${escapeHtml(vehicule.customer.phone)}</div>` : ''}
+              ${vehicule.customer.address ? `<div><i class="fas fa-map-marker-alt mr-3"></i>${escapeHtml(vehicule.customer.address)}</div>` : ''}
             </div>
             <button type="button" id="clear_customer" class="text-red-500 hover:text-red-700">
               <i class="fas fa-times"></i>
@@ -499,7 +505,7 @@ const fetchEntityData = async (type, id) => {
 // Handle form submission
 const handleSubmit = async (event, type) => {
   event.preventDefault();
-  console.log('Starting form submission for type:', type);
+  if (window.__VIRGA_DEBUG__) console.log('Starting form submission for type:', type);
   
   const form = event.target;
   const formData = new FormData(form);
@@ -512,12 +518,11 @@ const handleSubmit = async (event, type) => {
       const originalData = form.getAttribute('data-original');
       const original = originalData ? JSON.parse(originalData) : {};
       
-      console.log('Original data:', original);
-      console.log('Form data:', Object.fromEntries(formData));
+      // Avoid logging sensitive form contents in production.
 
       // For new users
       if (!id) {
-        console.log('Creating new user');
+        if (window.__VIRGA_DEBUG__) console.log('Creating new user');
         // Collect all required fields
         ['first_name', 'last_name', 'username', 'email', 'role', 'password'].forEach(field => {
           const value = formData.get(field)?.trim();
@@ -530,18 +535,15 @@ const handleSubmit = async (event, type) => {
       } 
       // For existing users
       else {
-        console.log('Updating user:', id);
+        if (window.__VIRGA_DEBUG__) console.log('Updating user:', id);
         // Check each field for changes
         const fields = ['first_name', 'last_name', 'email', 'username', 'role'];
         fields.forEach(field => {
           const newValue = formData.get(field)?.trim();
           const originalValue = original[field]?.trim();
           
-          console.log(`Comparing ${field}:`, { original: originalValue, new: newValue });
-          
           if (newValue !== originalValue) {
             data[field] = newValue;
-            console.log(`Field ${field} changed from "${originalValue}" to "${newValue}"`);
           }
         });
 
@@ -561,7 +563,7 @@ const handleSubmit = async (event, type) => {
       // Validate username if it's being set or changed
       const username = formData.get('username')?.trim();
       if (username !== original.username) {
-        console.log('Validating username:', username);
+        if (window.__VIRGA_DEBUG__) console.log('Validating username:', username);
         
         // Format validation
         const usernameRegex = /^[a-zA-Z0-9._-]+$/;
@@ -610,7 +612,7 @@ const handleSubmit = async (event, type) => {
     }
 
     // Submit the form
-    console.log('Submitting data:', data);
+    if (window.__VIRGA_DEBUG__) console.log('Submitting data:', data);
     
     const response = await fetch(`/admin/${type}s${id ? `/${id}` : ''}`, {
       method: id ? 'PUT' : 'POST',
@@ -804,14 +806,14 @@ const handleCustomerSearch = async (searchTerm) => {
     
     resultsContainer.innerHTML = filteredCustomers.map(customer => `
       <div class="customer-result p-2 hover:bg-gray-100 cursor-pointer" 
-            data-id="${customer.customer_id}"
-            data-name="${customer.name}"
-            data-phone="${customer.phone || ''}"
-            data-address="${customer.address || ''}">
-        <div class="font-medium bold"><i class="fas fa-user mr-2"></i>${customer.name}</div>
+            data-id="${escapeAttribute(customer.customer_id)}"
+            data-name="${escapeAttribute(customer.name)}"
+            data-phone="${escapeAttribute(customer.phone || '')}"
+            data-address="${escapeAttribute(customer.address || '')}">
+        <div class="font-medium bold"><i class="fas fa-user mr-2"></i>${escapeHtml(customer.name)}</div>
         <div class="text-sm text-gray-600">
-          ${customer.phone ? `<i class="fas fa-phone mr-2"></i>${customer.phone}` : ''}
-          ${customer.address ? `<br><i class="fas fa-map-marker-alt mr-2"></i>${customer.address}` : ''}
+          ${customer.phone ? `<i class="fas fa-phone mr-2"></i>${escapeHtml(customer.phone)}` : ''}
+          ${customer.address ? `<br><i class="fas fa-map-marker-alt mr-2"></i>${escapeHtml(customer.address)}` : ''}
         </div>
       </div>
       <div class="h-px w-full bg-gray-200"></div>
@@ -842,24 +844,24 @@ const selectCustomerFromID = async (customerId) => {
     <div class="flex-grow">
       <div class="flex items-center gap-2">
         <i class="fas fa-user text-gray-600"></i>
-        <span class="font-medium">${customer.name}</span>
+        <span class="font-medium">${escapeHtml(customer.name)}</span>
       </div>
       ${customer.phone ? `
         <div class="flex items-center gap-2 text-gray-600 mt-1">
           <i class="fas fa-phone"></i>
-          <span>${customer.phone}</span>
+          <span>${escapeHtml(customer.phone)}</span>
         </div>
       ` : ''}
       ${customer.address ? `
         <div class="flex items-center gap-2 text-gray-600 mt-1">
           <i class="fas fa-map-marker-alt"></i>
-          <span>${customer.address}</span>
+          <span>${escapeHtml(customer.address)}</span>
         </div>
       ` : ''}
     </div>
       <div class="flex gap-2">
         <button type="button" class="edit-customer-btn px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400" 
-          data-id="${customer.customer_id}" aria-label="Modifier" tabindex="0">
+          data-id="${escapeAttribute(customer.customer_id)}" aria-label="Modifier" tabindex="0">
           <i class="fas fa-edit"></i>
       </button>
       <button type="button" name="clear_selected_customer" class="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 focus:ring-2 focus:ring-red-400" 
@@ -1403,7 +1405,7 @@ const initEventListeners = () => {
   });
 
   document.getElementById('backupDatabaseBtn').addEventListener('click', () => {
-    console.log('Backup button clicked');
+    if (window.__VIRGA_DEBUG__) console.log('Backup button clicked');
     handleDatabaseBackup();
   });
 
@@ -1480,12 +1482,12 @@ const addOption = (option = null) => {
   optionDiv.innerHTML = `
     <div class="flex-grow space-y-2">
       <input type="text" name="optionLabel[]" placeholder="Label" required
-              value="${option ? option.label : ''}"
+              value="${escapeAttribute(option ? option.label : '')}"
               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
       <div class="flex items-center space-x-2">
         <input type="file" name="optionIcon[]" accept=".svg"
                 class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-        ${option ? `<img src="${option.icon}" alt="Option icon" class="h-6 w-6">` : ''}
+        ${option ? `<img src="${escapeAttribute(option.icon)}" alt="Option icon" class="h-6 w-6">` : ''}
       </div>
     </div>
     <button type="button" onclick="this.parentElement.remove()"
@@ -1573,7 +1575,7 @@ const handleViewCustomerCars = async (customerId) => {
 };
 
 const generateCarsReportsContent = (cars) => {
-  console.log('Generating cars reports content for', cars);
+  if (window.__VIRGA_DEBUG__) console.log('Generating cars reports content for', cars);
   if (!cars || cars.length === 0) {
     return `
       <div class="col-span-full text-center py-8 text-gray-500">

@@ -155,6 +155,7 @@
         <nav class="pagination-controls" aria-label="Navigation entre les pages de rapports">
           <a class="pagination-btn <%= pagination.hasPreviousPage ? '' : 'disabled' %>"
              href="/dashboard?page=<%= pagination.previousPage %>&search=<%= encodeURIComponent(typeof search !== 'undefined' ? search : '') %>"
+             data-page="<%= pagination.previousPage %>"
              aria-label="Page précédente"
              <%= pagination.hasPreviousPage ? '' : 'aria-disabled="true" tabindex="-1"' %>>
             <i class="fas fa-chevron-left"></i>
@@ -165,6 +166,7 @@
           </span>
           <a class="pagination-btn <%= pagination.hasNextPage ? '' : 'disabled' %>"
              href="/dashboard?page=<%= pagination.nextPage %>&search=<%= encodeURIComponent(typeof search !== 'undefined' ? search : '') %>"
+             data-page="<%= pagination.nextPage %>"
              aria-label="Page suivante"
              <%= pagination.hasNextPage ? '' : 'aria-disabled="true" tabindex="-1"' %>>
             Suivant

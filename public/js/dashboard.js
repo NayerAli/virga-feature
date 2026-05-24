@@ -269,7 +269,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const button = event.target.closest('.pagination-btn');
       if (!button || button.classList.contains('disabled')) return;
       event.preventDefault();
-      const requestedPage = Number.parseInt(button.dataset.page, 10) || 1;
+
+      const datasetPage = Number.parseInt(button.dataset.page, 10);
+      const hrefPage = (() => {
+        try {
+          return Number.parseInt(new URL(button.getAttribute('href'), window.location.origin).searchParams.get('page'), 10);
+        } catch (error) {
+          return NaN;
+        }
+      })();
+      const requestedPage = datasetPage || hrefPage || 1;
+
       handleSearch(requestedPage);
     });
   }
