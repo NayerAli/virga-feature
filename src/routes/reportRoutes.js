@@ -1,6 +1,7 @@
 ﻿const express = require('express');
 const router = express.Router();
 const { isAuthenticated } = require('../middleware/auth');
+const { requireReportAccess } = require('../middleware/authorization');
 const { getDatabase, getUserById } = require('../config/database');
 const { generatePDF } = require('../services/pdfGenerator');
 const fs = require('fs');
@@ -144,7 +145,7 @@ const handlePDFStream = (pdfPath, res, customer_name, license_plate, formatedDat
 };
 
 // Routes
-router.get('/preview/:id', isAuthenticated, async (req, res) => {
+router.get('/preview/:id', isAuthenticated, requireReportAccess('id', { responseType: 'html' }), async (req, res) => {
   try {
     const report = await getReport(req.params.id);
     if (!report) {
@@ -161,7 +162,7 @@ router.get('/preview/:id', isAuthenticated, async (req, res) => {
   }
 });
 
-router.get('/download/:id', isAuthenticated, async (req, res) => {
+router.get('/download/:id', isAuthenticated, requireReportAccess('id', { responseType: 'html' }), async (req, res) => {
   try {
     const report = await getReport(req.params.id);
     if (!report) {
@@ -179,7 +180,7 @@ router.get('/download/:id', isAuthenticated, async (req, res) => {
   }
 });
 
-router.delete('/delete/:id', isAuthenticated, async (req, res) => {
+router.delete('/delete/:id', isAuthenticated, requireReportAccess('id', { responseType: 'json' }), async (req, res) => {
   const db = getDatabase();
   const reportId = req.params.id;
 
@@ -203,14 +204,14 @@ router.delete('/delete/:id', isAuthenticated, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     logger.error(`Error deleting report (ID: ${reportId}):`, error);
-    res.status(500).json({ 
+    res.status(error.message === 'Report not found' ? 404 : 500).json({
       success: false, 
       error: error.message === 'Report not found' ? 'Report not found' : 'Internal server error' 
     });
   }
 });
 
-router.get('/:id', isAuthenticated, async (req, res) => {
+router.get('/:id', isAuthenticated, requireReportAccess('id', { responseType: 'html' }), async (req, res) => {
   try {
     const report = await getReport(req.params.id);
 
@@ -259,7 +260,7 @@ router.get('/:id', isAuthenticated, async (req, res) => {
 });
 
 // API to get an inspection item
-router.get('/api-inspection-report/:id', isAuthenticated, async (req, res) => {
+router.get('/api-inspection-report/:id', isAuthenticated, requireReportAccess('id', { responseType: 'json' }), async (req, res) => {
   try {
     const report = await getReport(req.params.id, false);
     if (!report) {

@@ -1,6 +1,7 @@
 ﻿const express = require('express');
 const router = express.Router();
 const { isAuthenticated } = require('../middleware/auth');
+const { isAdminUser } = require('../middleware/authorization');
 const { getDatabase } = require('../config/database');
 const logger = require('../utils/logger');
 
@@ -27,15 +28,28 @@ router.get('/', isAuthenticated, async (req, res) => {
 
     const params = [];
     
+    const whereClauses = [];
+
+    if (!isAdminUser(req.user)) {
+      whereClauses.push('ir.created_by = ?');
+      params.push(req.user.id);
+    }
+
     if (search) {
-      query += `
-        WHERE LOWER(v.license_plate) LIKE LOWER(?)
+      whereClauses.push(`(
+        LOWER(v.license_plate) LIKE LOWER(?)
         OR LOWER(c.name) LIKE LOWER(?)
         OR LOWER(v.brand) LIKE LOWER(?)
         OR LOWER(v.model) LIKE LOWER(?)
-      `;
+      )`);
       const searchParam = `%${search}%`;
       params.push(searchParam, searchParam, searchParam, searchParam);
+    }
+
+    if (whereClauses.length > 0) {
+      query += `
+        WHERE ${whereClauses.join(' AND ')}
+      `;
     }
 
     query += ' ORDER BY ir.created_at DESC';

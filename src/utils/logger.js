@@ -1,8 +1,7 @@
 const winston = require('winston');
-require('dotenv').config();
 
 const logger = winston.createLogger({
-  level: 'info',
+  level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.json(),
@@ -18,8 +17,5 @@ const logger = winston.createLogger({
     new winston.transports.File({ filename: 'src/logs/combined.log' }),
   ],
 });
-
-// Temporarily set to debug level to see all logs
-logger.level = process.env.LOG_LEVEL || 'debug';
 
 module.exports = logger;
