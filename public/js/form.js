@@ -652,18 +652,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const parsedMechanics = JSON.parse(data.mechanics);
 
         for (let mechanic in parsedMechanics) {
-          console.log(`Fetching mechanic details for ${parsedMechanics[mechanic]}`);
-          
-          fetch(`/form/api-user-details/${parsedMechanics[mechanic]}`)
-            .then(response => response.json())
-            .then(data => {
-              const option = document.getElementById(`mechanicList_${data.user.user_id}`);
-              if (option && !option.checked) {
-                option.checked = true;
-              } else if (option && option.selected) {
-                option.selected = true;
-              }
-            });
+          const option = document.getElementById(`mechanicList_${parsedMechanics[mechanic]}`);
+          if (option && !option.checked) {
+            option.checked = true;
+          } else if (option && option.selected) {
+            option.selected = true;
+          }
         }
       }
     } else {

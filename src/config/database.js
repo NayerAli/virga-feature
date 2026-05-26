@@ -1019,8 +1019,6 @@ const updateInspectionReports = (reportId, reportData, userId, isCustomerReassig
         db.run('BEGIN TRANSACTION');
 
         try {
-          console.log(existingReport);
-          
           // Common function to update inspection report details - moved outside conditionals
           const updateInspectionReportDetails = () => {
             db.run(`UPDATE InspectionReports SET
@@ -1158,7 +1156,7 @@ const getInspectionReport = (reportId) => {
     db.get(`
       SELECT 
         ir.*,
-        v.*
+        v.*,
         u.username as username,
         c.name as client_name,
         c.phone as client_phone,

@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { isAuthenticated } = require('../middleware/auth');
+const {
+  requireReportAccess,
+  requireSelfOrAdmin
+} = require('../middleware/authorization');
 const { submitForm } = require('../controllers/formController');
 const { 
   getInspectionItems, 
-  getAllVehicules, 
+  getDatabase,
   getVehiculeById, 
   getCustomerById, 
   updateInspectionReports, 
@@ -17,7 +21,29 @@ const logger = require('../utils/logger');
 // Add route to get all vehicules
 router.get('/api-vehicules', isAuthenticated, async (req, res) => {
   try {
-    const vehicules = await getAllVehicules();
+    const db = getDatabase();
+    const vehicules = await new Promise((resolve, reject) => {
+      const query = req.user.role === 'admin'
+        ? 'SELECT * FROM Vehicules ORDER BY license_plate ASC'
+        : `
+          SELECT DISTINCT v.*
+          FROM Vehicules v
+          INNER JOIN InspectionReports ir ON ir.vehicule_id = v.vehicule_id
+          WHERE ir.created_by = ?
+          ORDER BY v.license_plate ASC
+        `;
+      const params = req.user.role === 'admin' ? [] : [req.user.id];
+
+      db.all(query, params, (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(rows || []);
+      });
+    });
+
     const formattedVehicules = vehicules.map(vehicule => ({
       vehicule_id: vehicule.vehicule_id,
       license_plate: vehicule.license_plate,
@@ -46,6 +72,40 @@ router.get('/api-vehicule-details/:id', isAuthenticated, async (req, res) => {
     if (vehicule_id && vehicule_id.length > 0) {
       logger.debug(`Searching for vehicule with id: [${vehicule_id}]`);
       const vehicule = await getVehiculeById(vehicule_id);
+      if (!vehicule) {
+        return res.status(404).json({
+          success: false,
+          message: 'Véhicule introuvable'
+        });
+      }
+
+      const db = getDatabase();
+      if (req.user.role !== 'admin') {
+        const authorizedVehicule = await new Promise((resolve, reject) => {
+          db.get(`
+            SELECT v.vehicule_id
+            FROM Vehicules v
+            INNER JOIN InspectionReports ir ON ir.vehicule_id = v.vehicule_id
+            WHERE v.vehicule_id = ? AND ir.created_by = ?
+            LIMIT 1
+          `, [vehicule_id, req.user.id], (err, row) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+
+            resolve(row || null);
+          });
+        });
+
+        if (!authorizedVehicule) {
+          return res.status(403).json({
+            success: false,
+            message: 'Accès interdit.'
+          });
+        }
+      }
+
       const users = await getAllActiveUsers();
       const mechanicsList = users.filter(user => user.role === 'mechanic');
 
@@ -85,7 +145,7 @@ router.get('/api-vehicule-details/:id', isAuthenticated, async (req, res) => {
 });
 
 // Get user details with id
-router.get('/api-user-details/:id', isAuthenticated, async (req, res) => {
+router.get('/api-user-details/:id', isAuthenticated, requireSelfOrAdmin('id', { responseType: 'json' }), async (req, res) => {
   try {
     const user_id = req.params.id;
     const user = await getUserById(user_id);
@@ -106,12 +166,42 @@ router.get('/api-user-details/:id', isAuthenticated, async (req, res) => {
 // Add route to search customers by name
 router.get('/api-customers-search', isAuthenticated, async (req, res) => {
   try {
-    const searchQuery = req.query.query;
-    const customers = await getAllCustomers();
-    
-    const filteredCustomers = customers.filter(customer => 
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const searchQuery = (req.query.query || '').trim();
+    const db = getDatabase();
+    let filteredCustomers = [];
+
+    if (!searchQuery) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+
+    if (req.user.role === 'admin') {
+      const customers = await getAllCustomers();
+      filteredCustomers = customers.filter(customer =>
+        customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    } else {
+      filteredCustomers = await new Promise((resolve, reject) => {
+        db.all(`
+          SELECT DISTINCT c.*
+          FROM Customers c
+          INNER JOIN Vehicules v ON v.customer_id = c.customer_id
+          INNER JOIN InspectionReports ir ON ir.vehicule_id = v.vehicule_id
+          WHERE ir.created_by = ?
+            AND LOWER(c.name) LIKE LOWER(?)
+          ORDER BY c.name ASC
+        `, [req.user.id, `%${searchQuery}%`], (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(rows || []);
+        });
+      });
+    }
 
     const formattedCustomers = filteredCustomers.map(customer => ({
       customer_id: customer.customer_id,
@@ -176,7 +266,7 @@ router.get('/', isAuthenticated, async (req, res) => {
   }
 });
 
-router.get('/:id', isAuthenticated, async (req, res) => {
+router.get('/:id', isAuthenticated, requireReportAccess('id', { responseType: 'html' }), async (req, res) => {
   try {
     const inspectionItems = await getInspectionItems();
     const users = await getAllActiveUsers();
@@ -252,7 +342,7 @@ router.post('/submit-preview', isAuthenticated, async (req, res) => {
   }
 });
 
-router.post('/update/:id', isAuthenticated, async (req, res) => {
+router.post('/update/:id', isAuthenticated, requireReportAccess('id', { responseType: 'html' }), async (req, res) => {
   try {
     logger.debug(`Received update request for report ID: ${req.params.id}`);
     
