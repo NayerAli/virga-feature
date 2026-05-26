@@ -136,39 +136,6 @@ textarea {
   height: 100px;
 }
 
-.autosave-status {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  border-left: 4px solid #17a2b8;
-}
-
-.autosave-status.alert-success {
-  border-left-color: #28a745;
-}
-
-.autosave-status.alert-warning {
-  border-left-color: #ffc107;
-}
-
-.autosave-status button {
-  white-space: nowrap;
-  padding: 0.35rem 0.75rem;
-}
-
-@media (max-width: 576px) {
-  .autosave-status {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .autosave-status button {
-    width: 100%;
-  }
-}
-
 input[type='checkbox'] {
   margin-right: 10px;
 }

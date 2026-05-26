@@ -6,15 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const licensePlateInput = document.getElementById('license_plate');
   const dropdown = document.getElementById('search_dropdown');
   const previewPdfBtn = document.getElementById('preview-pdf-template-btn');
-  const autosaveStatus = document.getElementById('autosave-status');
-  const autosaveStatusText = document.getElementById('autosave-status-text');
-  const clearDraftBtn = document.getElementById('clear-draft-btn');
-  const autosaveKey = `virga:inspection-draft:${window.location.pathname}`;
-  const autosaveDelay = 700;
-  const autosaveMaxAgeMs = 7 * 24 * 60 * 60 * 1000;
-  let autosaveTimer = null;
-  let isRestoringDraft = false;
-  let hasClearedDraftForSubmit = false;
 
   const inputsToFormat = [
     {input: 'client_name', type: 'first_letter_only'}, 
@@ -61,194 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
     brandLogoPreview.alt = brandLogo.alt;
   };
 
-  const showAutosaveStatus = (message, type = 'info', autoHide = false) => {
-    if (!autosaveStatus || !autosaveStatusText) {
-      return;
-    }
-
-    autosaveStatus.classList.remove('d-none', 'alert-info', 'alert-success', 'alert-warning');
-    autosaveStatus.classList.add(`alert-${type}`);
-    autosaveStatusText.textContent = message;
-
-    if (autoHide) {
-      setTimeout(() => {
-        autosaveStatus.classList.add('d-none');
-      }, 3000);
-    }
-  };
-
-  const getSerializableFormElements = () => Array.from(form.elements).filter(element =>
-    element.name &&
-    !element.disabled &&
-    element.type !== 'submit' &&
-    element.type !== 'button' &&
-    element.type !== 'file'
-  );
-
-  const serializeForm = () => {
-    const draft = {};
-
-    getSerializableFormElements().forEach(element => {
-      if (element.type === 'radio') {
-        if (element.checked) {
-          draft[element.name] = element.value;
-        }
-        return;
-      }
-
-      if (element.type === 'checkbox') {
-        if (!draft[element.name]) {
-          draft[element.name] = [];
-        }
-
-        if (element.checked) {
-          draft[element.name].push(element.value);
-        }
-        return;
-      }
-
-      draft[element.name] = element.value;
-    });
-
-    return draft;
-  };
-
-  const hasMeaningfulDraftData = (draft) => Object.entries(draft).some(([key, value]) => {
-    if (key === 'is_company' || key === 'customer_id') {
-      return false;
-    }
-
-    if (Array.isArray(value)) {
-      return value.length > 0;
-    }
-
-    return String(value || '').trim().length > 0;
-  });
-
-  const saveDraft = () => {
-    if (!form || isRestoringDraft || hasClearedDraftForSubmit) {
-      return;
-    }
-
-    try {
-      const draft = serializeForm();
-      if (!hasMeaningfulDraftData(draft)) {
-        window.localStorage.removeItem(autosaveKey);
-        return;
-      }
-
-      window.localStorage.setItem(autosaveKey, JSON.stringify({
-        savedAt: Date.now(),
-        path: window.location.pathname,
-        data: draft
-      }));
-
-      const savedAt = new Date().toLocaleTimeString('fr-FR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      showAutosaveStatus(`Brouillon sauvegardé automatiquement à ${savedAt}.`, 'info');
-    } catch (error) {
-      console.warn('Autosave unavailable', error);
-      showAutosaveStatus('Sauvegarde automatique indisponible sur ce navigateur.', 'warning');
-    }
-  };
-
-  const scheduleDraftSave = () => {
-    if (!form || isRestoringDraft || hasClearedDraftForSubmit) {
-      return;
-    }
-
-    clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(saveDraft, autosaveDelay);
-  };
-
-  const applyDraftToForm = (draft) => {
-    isRestoringDraft = true;
-
-    getSerializableFormElements().forEach(element => {
-      if (!Object.prototype.hasOwnProperty.call(draft, element.name)) {
-        return;
-      }
-
-      const value = draft[element.name];
-      if (element.type === 'radio') {
-        element.checked = element.value === value;
-        return;
-      }
-
-      if (element.type === 'checkbox') {
-        element.checked = Array.isArray(value) && value.includes(element.value);
-        return;
-      }
-
-      element.value = value;
-    });
-
-    updateBrandLogoPreview();
-    isRestoringDraft = false;
-  };
-
-  const restoreDraftIfAvailable = () => {
-    if (!form) {
-      return;
-    }
-
-    try {
-      const rawDraft = window.localStorage.getItem(autosaveKey);
-      if (!rawDraft) {
-        return;
-      }
-
-      const draftPayload = JSON.parse(rawDraft);
-      if (!draftPayload.savedAt || !draftPayload.data) {
-        window.localStorage.removeItem(autosaveKey);
-        return;
-      }
-
-      if (Date.now() - draftPayload.savedAt > autosaveMaxAgeMs) {
-        window.localStorage.removeItem(autosaveKey);
-        return;
-      }
-
-      applyDraftToForm(draftPayload.data);
-      const savedAt = new Date(draftPayload.savedAt).toLocaleString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      showAutosaveStatus(`Brouillon restauré (${savedAt}).`, 'success');
-    } catch (error) {
-      console.warn('Draft restore failed', error);
-      window.localStorage.removeItem(autosaveKey);
-    }
-  };
-
-  const clearDraft = (message = 'Brouillon effacé.') => {
-    try {
-      window.localStorage.removeItem(autosaveKey);
-      showAutosaveStatus(message, 'success', true);
-    } catch (error) {
-      console.warn('Draft clear failed', error);
-    }
-  };
-
-  const initAutosave = () => {
-    if (!form) {
-      return;
-    }
-
-    form.addEventListener('input', scheduleDraftSave);
-    form.addEventListener('change', scheduleDraftSave);
-
-    if (clearDraftBtn) {
-      clearDraftBtn.addEventListener('click', () => clearDraft('Brouillon supprimé.'));
-    }
-  };
-
-  initAutosave();
-
   // If the form is with report id (/report/:id), fill the form with the data
   const id = window.location.href.split('/').pop();
   if (id != 'form') {
@@ -259,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(response => response.json())
       .then(data => {
         fillForm(data);
-        restoreDraftIfAvailable();
       });
     
     // Set form action to update instead of submit
@@ -267,8 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Hide preview PDF button to avoid double submission
     previewPdfBtn.hidden = true;
-  } else {
-    restoreDraftIfAvailable();
   }
 
   // Form submission handler
@@ -281,9 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } else {
           setUnsetRadioInputs();
-          saveDraft();
-          hasClearedDraftForSubmit = true;
-          clearDraft('Rapport envoyé, brouillon supprimé.');
 
           const formData = new FormData(form);
 
@@ -798,7 +595,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       fillForm(data.vehicule);
       fillForm(data.customer);
-      saveDraft();
 
       if (data.success) {
         searchResult.innerHTML = `
@@ -952,7 +748,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('client_email').value = customer.email || '';
         document.getElementById('client_address').value = customer.address || '';
         document.getElementById('is_company').checked = customer.is_company;
-        saveDraft();
 
         // Add a hidden field to indicate this is a customer reassignment
         // Only if selecting a different customer than the original one
