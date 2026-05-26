@@ -58,12 +58,13 @@ ENV NODE_ENV=production \
 # Create a script to handle environment variable substitution
 COPY docker-entrypoint.sh /usr/local/bin/
 USER root
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
 USER node
 
 # Expose port
 EXPOSE 3000
 
 # Use the entrypoint script
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["npm", "start"] 
