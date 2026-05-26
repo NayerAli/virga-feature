@@ -144,7 +144,7 @@ const canAccessReport = (report, user) => {
   return mechanicIds.includes(String(user.id));
 };
 
-const requireReportAccess = (report, req, res) => {
+const ensureReportAccess = (report, req, res) => {
   if (canAccessReport(report, req.session.user)) {
     return true;
   }
@@ -206,7 +206,7 @@ router.get('/preview/:id', isAuthenticated, requireReportAccess('id', { response
       return res.status(404).json({ error: 'Report not found' });
     }
 
-    if (!requireReportAccess(report, req, res)) {
+    if (!ensureReportAccess(report, req, res)) {
       return;
     }
 
@@ -227,7 +227,7 @@ router.get('/download/:id', isAuthenticated, requireReportAccess('id', { respons
       return res.status(404).send('Report not found');
     }
 
-    if (!requireReportAccess(report, req, res)) {
+    if (!ensureReportAccess(report, req, res)) {
       return;
     }
 
@@ -309,7 +309,7 @@ router.get('/:id', isAuthenticated, requireReportAccess('id', { responseType: 'h
       });
     }
 
-    if (!requireReportAccess(report, req, res)) {
+    if (!ensureReportAccess(report, req, res)) {
       return;
     }
 
