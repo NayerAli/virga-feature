@@ -193,17 +193,17 @@ app.use('/admin', isAuthenticated, adminRoutes);
 // Serve generated reports only to authenticated users
 app.use('/generated_reports', isAuthenticated, express.static(path.join(__dirname, 'generated_reports')));
 
-// Error handler
-app.use(errorHandler);
-
 // 404 handler
 app.use((req, res) => {
   res.status(404).render('error', {
-    message: 'Page not found',
+    message: 'Page introuvable',
     errors: [],
-    user: req.session.user
+    user: req.session.user || null
   });
 });
+
+// Error handler (4-argument middleware — must be last)
+app.use(errorHandler);
 
 let appServer;
 

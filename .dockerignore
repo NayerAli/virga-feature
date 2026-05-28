@@ -9,6 +9,7 @@ npm-debug.log
 # Environment variables
 .env
 .env.*
+!__tests__/.env.test
 
 # Development files
 *.log

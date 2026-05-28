@@ -33,44 +33,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      // Hide modal using jQuery
-      $('#deleteModal').modal('hide');
-
       const data = await response.json();
 
       if (data.success) {
-        // Remove the row from the table
-        const row = deleteButtonToDelete ? deleteButtonToDelete.closest('tr') : null;
-        if (row) row.remove();
-
-        // Show success message
-        showNotification('Rapport supprimé avec succès', 'success');
+        showDashboardFeedback('Rapport supprimé avec succès.', 'success');
         handleSearch(currentPage);
       } else {
-        showNotification('Erreur lors de la suppression du rapport', 'error');
+        showDashboardFeedback('Erreur lors de la suppression du rapport.', 'error');
       }
     } catch (error) {
       console.error('Error:', error);
-      showNotification('Erreur lors de la suppression du rapport', 'error');
+      showDashboardFeedback('Erreur lors de la suppression du rapport.', 'error');
     } finally {
-      // Hide modal using jQuery and reset reportToDelete
       $('#deleteModal').modal('hide');
       reportToDelete = null;
       deleteButtonToDelete = null;
     }
   });
 
-  // Notification helper function
-  const showNotification = (message, type) => {
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} notification`;
-    notification.textContent = message;
+  const showDashboardFeedback = (message, type) => {
+    let feedback = document.getElementById('dashboardFeedback');
+    if (!feedback) {
+      feedback = document.createElement('div');
+      feedback.id = 'dashboardFeedback';
+      const wrapper = document.querySelector('.content-wrapper');
+      if (wrapper) wrapper.insertBefore(feedback, wrapper.firstChild);
+    }
 
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
+    const isSuccess = type === 'success';
+    const iconClass = isSuccess ? 'fa-check-circle' : 'fa-exclamation-circle';
+    feedback.className = `alert alert-${isSuccess ? 'success' : 'danger'} fade-out`;
+    feedback.classList.remove('d-none');
+    feedback.setAttribute('role', isSuccess ? 'status' : 'alert');
+    feedback.setAttribute('aria-live', 'polite');
+    feedback.innerHTML = `<i class="fas ${iconClass}" aria-hidden="true"></i> ${escapeHtml(message)}`;
   };
 
   const getBrandLogo = (brand) => {
@@ -146,28 +142,45 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   };
 
-  const updateTable = (reports) => {
-    const tbody = document.querySelector('.reports-table tbody');
-    if (!reports.length) {
-      tbody.innerHTML = `
+  const renderEmptyState = (searchValue) => {
+    const trimmedSearch = String(searchValue || '').trim();
+    if (trimmedSearch) {
+      return `
         <tr>
           <td colspan="5" class="no-reports">
-            <i class="fas fa-info-circle"></i>
-            <p>Aucun rapport trouvé</p>
-            <a href="/form" class="btn btn-primary mt-3">
-              <i class="fas fa-plus"></i>
-              Créer un nouveau rapport
-            </a>
+            <i class="fas fa-info-circle" aria-hidden="true"></i>
+            <p>Aucun résultat pour «&nbsp;${escapeHtml(trimmedSearch)}&nbsp;»</p>
+            <p class="text-muted small mb-0">Modifiez votre recherche ou effacez le champ pour tout afficher.</p>
           </td>
         </tr>
       `;
+    }
+
+    return `
+      <tr>
+        <td colspan="5" class="no-reports">
+          <i class="fas fa-info-circle" aria-hidden="true"></i>
+          <p>Aucun rapport pour le moment</p>
+          <a href="/form" class="btn btn-primary mt-3">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+            Créer un rapport
+          </a>
+        </td>
+      </tr>
+    `;
+  };
+
+  const updateTable = (reports, searchValue = '') => {
+    const tbody = document.querySelector('.reports-table tbody');
+    if (!reports.length) {
+      tbody.innerHTML = renderEmptyState(searchValue);
       return;
     }
 
     tbody.innerHTML = reports.map(report => {
       const brandLogo = getBrandLogo(report.brand);
       const vehicleLabel = report.brand && report.model
-        ? `${escapeHtml(report.brand)} | ${escapeHtml(report.model)}`
+        ? `${escapeHtml(report.brand)} ${escapeHtml(report.model)}`
         : 'N/A';
       const safeReportId = encodeURIComponent(report.report_id || '');
 
@@ -190,29 +203,36 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="action-buttons">
             <a href="/report/${safeReportId}"
                class="action-btn view"
-               title="Voir le rapport">
-              <i class="fas fa-eye"></i>
+               title="Voir le rapport"
+               aria-label="Voir le rapport">
+              <i class="fas fa-eye" aria-hidden="true"></i>
             </a>
             <a href="/report/preview/${safeReportId}?fresh=${Date.now()}"
                class="action-btn preview"
-               title="Prévisualiser PDF"
-               target="_blank">
-              <i class="fas fa-file-pdf"></i>
+               title="Prévisualiser le PDF"
+               aria-label="Prévisualiser le PDF"
+               target="_blank"
+               rel="noopener noreferrer">
+              <i class="fas fa-file-pdf" aria-hidden="true"></i>
             </a>
             <a href="/report/download/${safeReportId}?fresh=${Date.now()}"
                class="action-btn download"
-               title="Télécharger">
-              <i class="fas fa-download"></i>
+               title="Télécharger le PDF"
+               aria-label="Télécharger le PDF">
+              <i class="fas fa-download" aria-hidden="true"></i>
             </a>
             <a href="/form/${safeReportId}"
                class="action-btn edit"
-               title="Modifier">
-              <i class="fa-regular fa-pen-to-square"></i>
+               title="Modifier le rapport"
+               aria-label="Modifier le rapport">
+              <i class="fas fa-pen-to-square" aria-hidden="true"></i>
             </a>
-            <button class="action-btn delete"
+            <button type="button"
+                    class="action-btn delete"
                     data-report-id="${escapeAttribute(report.report_id)}"
-                    title="Supprimer">
-              <i class="fas fa-trash"></i>
+                    title="Supprimer le rapport"
+                    aria-label="Supprimer le rapport">
+              <i class="fas fa-trash" aria-hidden="true"></i>
             </button>
           </div>
         </td>
@@ -250,12 +270,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await response.json();
       currentPage = data.pagination ? data.pagination.currentPage : page;
-      updateTable(data.reports || []);
+      updateTable(data.reports || [], searchValue);
       renderPagination(data.pagination);
       updateBrowserUrl(searchValue, currentPage);
     } catch (error) {
       console.error('Search error:', error);
-      showNotification('Erreur lors de la recherche', 'error');
+      showDashboardFeedback('Erreur lors de la recherche. Réessayez.', 'error');
     }
   };
 

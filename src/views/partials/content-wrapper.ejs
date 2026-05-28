@@ -1,14 +1,14 @@
 <div class="content-wrapper">
-  <% if (locals.success && locals.success.length > 0) { %>
-    <div class="alert alert-success fade-out">
-      <i class="fas fa-check-circle"></i>
+  <% if (locals.success && success) { %>
+    <div class="alert alert-success fade-out" role="status" aria-live="polite">
+      <i class="fas fa-check-circle" aria-hidden="true"></i>
       <%= Array.isArray(success) ? success[0] : success %>
     </div>
   <% } %>
 
-  <% if (locals.error && locals.error.length > 0) { %>
-    <div class="alert alert-danger fade-out">
-      <i class="fas fa-exclamation-circle"></i>
+  <% if (locals.error && error && !(locals.success && success)) { %>
+    <div class="alert alert-danger fade-out" role="alert" aria-live="polite">
+      <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
       <%= Array.isArray(error) ? error[0] : error %>
     </div>
   <% } %>

@@ -2,12 +2,31 @@
 const bcrypt = require('bcrypt');
 const { getUserWithPasswordByUsername } = require('../config/database');
 const logger = require('../utils/logger');
+const {
+  MAX_LOGIN_ATTEMPTS,
+  LOCK_TIME_MINUTES,
+  clearExpiredLock,
+  buildLoginMeta,
+  lockAccount,
+  isUserActive
+} = require('../utils/loginLock');
 
 const router = express.Router();
-const MAX_LOGIN_ATTEMPTS = Number.parseInt(process.env.MAX_LOGIN_ATTEMPTS || '4', 10);
-const LOCK_TIME_MS = Number.parseInt(process.env.LOCK_TIME || '15', 10) * 60 * 1000;
 
 const SESSION_OP_TIMEOUT_MS = 10000;
+// Hash pré-calculé pour uniformiser le temps de réponse (utilisateur inconnu / inactif).
+const DUMMY_PASSWORD_HASH = '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxnRQ7XO9/MTt5p8.FmN/VN2.9.K6';
+
+function renderLogin(res, { error = null, loginMeta, user = null } = {}) {
+  return res.render('login', {
+    error,
+    errors: [],
+    user,
+    loginMeta,
+    maxLoginAttempts: MAX_LOGIN_ATTEMPTS,
+    lockTimeMinutes: LOCK_TIME_MINUTES
+  });
+}
 
 function runSessionOperation(operation, label) {
   return new Promise((resolve, reject) => {
@@ -26,17 +45,32 @@ function runSessionOperation(operation, label) {
   });
 }
 
+async function persistSessionIfNeeded(req) {
+  if (clearExpiredLock(req)) {
+    await runSessionOperation((cb) => req.session.save(cb), 'Session save');
+  }
+}
+
 async function recordFailedLoginAttempt(req, res) {
   req.session.loginAttempts = Number(req.session.loginAttempts || 0) + 1;
   if (req.session.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-    req.session.loginLockUntil = Date.now() + LOCK_TIME_MS;
+    lockAccount(req);
   }
 
-  await runSessionOperation((cb) => req.session.save(cb), 'Session save');
-  return res.render('login', {
+  try {
+    await runSessionOperation((cb) => req.session.save(cb), 'Session save');
+  } catch (err) {
+    logger.error('Failed to persist login attempt counter:', err);
+    return renderLogin(res, {
+      error: 'Une erreur est survenue lors de la connexion',
+      loginMeta: buildLoginMeta(req)
+    });
+  }
+
+  const loginMeta = buildLoginMeta(req);
+  return renderLogin(res, {
     error: 'Identifiants invalides',
-    errors: [],
-    user: null
+    loginMeta
   });
 }
 
@@ -45,33 +79,46 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/login', (req, res) => {
+router.get('/login', async (req, res) => {
   if (req.session.user) {
     return res.redirect('/dashboard');
   }
-  res.render('login', {
-    error: null,
-    errors: [],
-    user: null
-  });
+
+  try {
+    await persistSessionIfNeeded(req);
+    return renderLogin(res, { loginMeta: buildLoginMeta(req) });
+  } catch (err) {
+    logger.error('Login page error:', err);
+    return renderLogin(res, {
+      error: 'Une erreur est survenue lors de la connexion',
+      loginMeta: buildLoginMeta(req)
+    });
+  }
 });
 
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  const lockUntil = Number(req.session.loginLockUntil || 0);
-
-  if (lockUntil > Date.now()) {
-    return res.render('login', {
-      error: 'Identifiants invalides',
-      errors: [],
-      user: null
-    });
-  }
+  const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+  const password = typeof req.body.password === 'string' ? req.body.password : '';
 
   try {
+    await persistSessionIfNeeded(req);
+    const loginMeta = buildLoginMeta(req);
+
+    if (loginMeta.isLocked) {
+      return renderLogin(res, {
+        error: null,
+        loginMeta
+      });
+    }
+
+    if (!username || !password) {
+      return recordFailedLoginAttempt(req, res);
+    }
+
     const user = await getUserWithPasswordByUsername(username);
 
-    if (!user || !user.is_active) {
+    if (!user || !isUserActive(user)) {
+      await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
       return recordFailedLoginAttempt(req, res);
     }
 
@@ -107,13 +154,9 @@ router.post('/login', async (req, res) => {
     return res.redirect('/dashboard');
   } catch (err) {
     logger.error('Login error:', err);
-    const isSessionError = err.message?.includes('Session');
-    res.render('login', {
-      error: isSessionError
-        ? 'Une erreur est survenue lors de la connexion'
-        : 'Une erreur est survenue lors de la connexion',
-      errors: [],
-      user: null
+    return renderLogin(res, {
+      error: 'Une erreur est survenue lors de la connexion',
+      loginMeta: buildLoginMeta(req)
     });
   }
 });

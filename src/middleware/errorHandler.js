@@ -1,23 +1,27 @@
 ﻿const logger = require('../utils/logger');
 
-module.exports = (err, req, res) => {
+module.exports = (err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+
   logger.error('Unhandled error:', err);
-  
-  const errorMessage = err.message || 'Internal Server Error';
-  
-  if (req.xhr || req.headers.accept.indexOf('json') > -1) {
-    return res.status(err.status || 500).json({ error: errorMessage });
+
+  const errorMessage = err.message || 'Une erreur interne est survenue';
+  const statusCode = err.status || 500;
+
+  if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+    return res.status(statusCode).json({ error: errorMessage });
   }
 
   if (req.flash) {
     req.flash('error', errorMessage);
   }
-  
-  res.status(err.status || 500);
-  res.render('error', {
+
+  return res.status(statusCode).render('error', {
     message: errorMessage,
-    user: req.session.user,
-    success: req.flash('success'),
-    error: req.flash('error')
+    user: req.session?.user || null,
+    success: req.flash ? req.flash('success') : [],
+    error: req.flash ? req.flash('error') : []
   });
 };

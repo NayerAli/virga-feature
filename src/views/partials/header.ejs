@@ -9,8 +9,9 @@
   <link rel="stylesheet" href="/static/css/style.css" />
   <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico">
 </head>
-<body class="app-body">
-  <div class="page-container">
+<body class="<%= typeof bodyClass !== 'undefined' ? bodyClass : 'app-body' %>">
+  <div class="page-container<%= typeof authPage !== 'undefined' && authPage ? ' page-container--auth' : '' %>">
+    <% if (typeof authPage === 'undefined' || !authPage) { %>
     <header class="app-header">
       <div class="header-brand">
         <a href="/dashboard"><img src="/static/img/company_logo.png" alt="Logo de l'entreprise" class="header-logo" /></a>
@@ -21,13 +22,13 @@
         </div>
       </div>
       <% if (showNav) { %>
-        <nav class="header-nav">
+        <nav class="header-nav" aria-label="Navigation principale">
           <a href="/dashboard" class="nav-btn <%= currentPage === 'dashboard' ? 'active' : '' %>">
-            <i class="fas fa-tachometer-alt"></i>
+            <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
             <span>Tableau de bord</span>
           </a>
           <a href="/form" class="nav-btn <%= currentPage === 'form' ? 'active' : '' %>">
-            <i class="fas fa-plus"></i>
+            <i class="fas fa-plus" aria-hidden="true"></i>
             <span>Nouveau rapport</span>
           </a>
 
@@ -36,32 +37,28 @@
             tabindex="0"
             role="button"
             aria-expanded="false"
-            aria-label="User information"
-            style="position: relative; isolation: isolate;"
+            aria-label="Menu utilisateur"
           >
-            <!-- User Avatar -->
             <div class="user-avatar">
-              <i class="fas fa-user-circle"></i>
+              <i class="fas fa-user-circle" aria-hidden="true"></i>
             </div>
 
-            <!-- Basic Info (Always Visible) -->
             <div class="user-basic-info">
               <% if (typeof user !== 'undefined' && user) { %>
                 <span class="user-name" data-full-name="<%= user.first_name %> <%= user.last_name %>">
                   <%= user.first_name %>
                 </span>
               <% } else { %>
-                <span class="user-name">Guest</span>
+                <span class="user-name">Invité</span>
               <% } %>
             </div>
 
-            <!-- Expanded Content -->
             <div class="user-expanded-content">
               <div class="user-expanded-inner">
                 <% if (typeof user !== 'undefined' && user && user.username) { %>
                   <div class="user-header">
                     <div class="user-avatar-large">
-                      <i class="fas fa-user-circle"></i>
+                      <i class="fas fa-user-circle" aria-hidden="true"></i>
                     </div>
                     <div class="user-details">
                       <p class="user-fullname"><%= user.first_name %> <%= user.last_name %></p>
@@ -72,21 +69,19 @@
                 <% } %>
                 <% if (isAdmin) { %>
                   <a href="/admin" class="menu-item <%= currentPage === 'admin' ? 'active' : '' %>">
-                    <i class="fas fa-user-shield"></i>
+                    <i class="fas fa-user-shield" aria-hidden="true"></i>
                     <span>Administration</span>
                   </a>
                 <% } %>
                 <a href="/auth/logout" class="menu-item logout">
-                  <i class="fas fa-sign-out-alt"></i>
+                  <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
                   <span>Déconnexion</span>
                 </a>
               </div>
             </div>
           </div>
-               
-          </nav>
-        <% } %>
-      </header>
-      <main class="page-main">
-</body>
-</html> 
+        </nav>
+      <% } %>
+    </header>
+    <% } %>
+    <main class="page-main<%= typeof authPage !== 'undefined' && authPage ? ' page-main--auth' : '' %>">

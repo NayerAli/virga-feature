@@ -359,7 +359,11 @@ const updateUser = async (userId, updates) => {
 
     if (updates.is_active !== undefined) {
       fields.push('is_active = ?');
-      values.push(updates.is_active);
+      values.push(
+        updates.is_active === true || updates.is_active === 1 || updates.is_active === '1'
+          ? 1
+          : 0
+      );
     }
 
     if (updates.username !== undefined) {
@@ -499,14 +503,14 @@ const getUserByUsername = async (username) => {
 };
 
 const getUserWithPasswordByUsername = async (username) => {
-  if (!username) {
-    throw new Error('Username is required');
+  if (!username || typeof username !== 'string' || !username.trim()) {
+    return null;
   }
 
   return new Promise((resolve, reject) => {
     db.get(
       'SELECT user_id, username, password, first_name, last_name, email, role, is_active FROM Users WHERE LOWER(username) = LOWER(?)',
-      [username],
+      [username.trim()],
       (err, row) => {
         if (err) {
           logger.error(`Database error while fetching user ${username}:`, err);

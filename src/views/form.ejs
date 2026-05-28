@@ -6,17 +6,20 @@
 }) %>
 
 <div class="content-wrapper">
-  <form action="/form/submit" method="POST" id="inspection-form">
-    <!-- Alerts -->
-    <% if (errors && errors.length > 0) { %>
-      <div class="alert alert-danger">
-        <ul>
-          <% errors.forEach(function(error) { %>
-            <li><%= error.msg %></li>
+  <form action="/form/submit" method="POST" id="inspection-form" novalidate>
+    <div id="formFeedback"
+         class="form-page-feedback<%= (errors && errors.length > 0) ? ' alert alert-danger' : ' d-none' %>"
+         role="alert"
+         aria-live="polite">
+      <% if (errors && errors.length > 0) { %>
+        <i class="fas fa-times-circle" aria-hidden="true"></i>
+        <ul class="mb-0 pl-3">
+          <% errors.forEach(function(err) { %>
+            <li><%= err.msg %></li>
           <% }); %>
         </ul>
-      </div>
-    <% } %>
+      <% } %>
+    </div>
 
     <!-- Form Sections -->
     <div class="form-sections">
@@ -38,8 +41,9 @@
                       class="form-control text-uppercase" required 
                       placeholder="AB-123-CD"
                       value="<%= data.license_plate || '' %>"
-                      autocomplete="off">
-                      <div id="search_result"></div>
+                      autocomplete="off"
+                      aria-describedby="vehicleSearchFeedback">
+                <div id="vehicleSearchFeedback" class="form-inline-feedback" role="status" aria-live="polite"></div>
                 <!-- Add dropdown container -->
                 <div id="search_dropdown" class="search-dropdown d-none">
                   <div class="search-dropdown-content">
@@ -202,20 +206,18 @@
       <div class="card-header bg-primary text-white">
         <h2 class="h5 mb-0"><i class="fas fa-user-circle"></i> INFORMATIONS CLIENT</h2>
       </div>
-      <% if (data.customer_id) { %>
-        <input type="hidden" id="customer_id" name="customer_id" value="<%= data.customer_id %>">
-      <% } %>
       <div class="card-body">
+        <input type="hidden" id="customer_id" name="customer_id" value="<%= data.customer_id || '' %>">
         <div class="row">
           <div class="col-md-6">
             <div class="form-group position-relative">
-              <input type="hidden" id="customer_id" name="customer_id" value="<%= data.customer_id %>">
               <label for="client_name">
                 <i class="far fa-user"></i> Nom :
               </label>
               <input type="text" id="client_name" name="client_name" 
-                      class="form-control" value="<%= data.client_name || '' %>" required autocomplete="off">
-              <div id="customer_search_result"></div>
+                      class="form-control" value="<%= data.client_name || '' %>" required autocomplete="off"
+                      aria-describedby="customerSearchFeedback">
+              <div id="customerSearchFeedback" class="form-inline-feedback" role="status" aria-live="polite"></div>
               <!-- Add customer search dropdown -->
               <div id="customer_search_dropdown" class="search-dropdown d-none">
                 <div class="customer-search-dropdown-content">
@@ -276,9 +278,11 @@
             <i class="fas fa-clipboard-check"></i> POINTS DE CONTRÔLE
           </h2>
           <div class="d-flex align-items-center">
-            <button id="preview-pdf-template-btn" type="button" aria-label="Prévisualiser le PDF vierge"
-              class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">
-              <i class="fas fa-file-pdf mr-2"></i> Prévisualiser le PDF vierge
+            <button id="preview-pdf-template-btn" type="button"
+              class="btn btn-sm btn-light form-pdf-preview-btn"
+              aria-label="Prévisualiser le modèle PDF vierge">
+              <i class="fas fa-file-pdf" aria-hidden="true"></i>
+              <span class="d-none d-md-inline"> Prévisualiser le PDF vierge</span>
             </button>
           </div>
         </div>
@@ -316,8 +320,8 @@
                   <% groupedItems[category].forEach(item => { %>
                     <div class="inspection-item">
                       <div class="custom-radio-group">
-                        <label class="control-label"><%= item.name %></label>
-                        <div class="radio-options">
+                        <span class="control-label" id="inspection_label_<%= item.item_id %>"><%= item.name %></span>
+                        <div class="radio-options" role="radiogroup" aria-labelledby="inspection_label_<%= item.item_id %>">
                           <% 
                           const itemOptions = item.options ? JSON.parse(item.options) : [];
                           itemOptions.forEach(option => { 
@@ -329,11 +333,13 @@
                                      value="<%= option.id %>"
                                      class="custom-control-input"
                                      <%= data.inspection && data.inspection[item.item_id] === option.id ? 'checked' : '' %>>
-                              <label class="custom-control-label" 
+                              <label class="custom-control-label inspection-option-label" 
                                      for="<%= category %>_<%= item.item_id %>_<%= option.id %>">
                                 <img src="<%= option.icon %>" 
-                                     alt="<%= option.label %>" 
-                                     class="option-icon" />
+                                     alt="" 
+                                     class="option-icon" 
+                                     aria-hidden="true" />
+                                <span class="sr-only"><%= option.label %></span>
                               </label>
                             </div>
                           <% }); %>
@@ -357,8 +363,9 @@
               <h2 class="h5 mb-0"><i class="fas fa-comment"></i> COMMENTAIRES</h2>
             </div>
             <div class="card-body">
+              <label for="comments" class="sr-only">Commentaires</label>
               <textarea id="comments" name="comments" class="form-control" rows="4" 
-                        placeholder="Observations supplémentaires..."><%= data.comments || '' %></textarea>
+                        placeholder="Observations supplémentaires…"><%= data.comments || '' %></textarea>
             </div>
           </div>
         </div>
@@ -370,7 +377,8 @@
               <h2 class="h5 mb-0"><i class="fas fa-users"></i> MÉCANICIENS</h2>
             </div>
             <div class="card-body">
-              <div class="form-group mb-0" id="mechanicList">
+              <fieldset class="form-group mb-0 mechanic-fieldset" id="mechanicList">
+                <legend class="sr-only">Mécaniciens assignés</legend>
                 <% mechanicsList.forEach(function(user) { %>
                   <div class="custom-control custom-checkbox">
                     <input type="checkbox" 
@@ -384,7 +392,7 @@
                     </label>
                   </div>
                 <% }); %>
-              </div>
+              </fieldset>
             </div>
           </div>
         </div>
@@ -392,8 +400,8 @@
     </div>
 
     <!-- Submit Button -->
-    <div class="text-center mb-5">
-      <button type="submit" class="btn btn-primary btn-lg">
+    <div class="text-center mb-5 form-submit-actions">
+      <button type="submit" class="btn btn-primary btn-lg form-submit-btn">
         <i class="fas fa-save"></i> Enregistrer le rapport
       </button>
     </div>

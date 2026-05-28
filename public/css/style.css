@@ -1056,16 +1056,39 @@ label i {
 }
 
 .search-box input {
-  width: auto;
-  min-width: 310px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 0.5rem 1rem 0.5rem 2rem;
   border: 1px solid #dee2e6;
   border-radius: 6px;
   font-size: 0.9rem;
-  /* min-width: is 400px on desktop */
-  @media (min-width: 768px) {
+}
+
+@media (min-width: 768px) {
+  .reports-section .search-box input {
     min-width: 400px;
   }
+}
+
+.no-reports {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #6c757d;
+}
+
+.no-reports i {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #90caf9;
+}
+
+.no-reports p {
+  margin-bottom: 0.5rem;
+}
+
+.content-wrapper > .alert {
+  margin-bottom: 1rem;
 }
 
 .reports-table {
@@ -1290,12 +1313,27 @@ label i {
     gap: 1rem;
   }
 
+  .reports-section .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .reports-section .header-actions {
+    width: 100%;
+  }
+
   .search-box {
     width: 100%;
   }
 
   .action-buttons {
     flex-wrap: wrap;
+  }
+
+  .action-btn {
+    width: 44px;
+    height: 44px;
   }
 
   .dashboard-pagination {
@@ -1613,6 +1651,20 @@ label i {
 .page-main {
   flex: 1 0 auto;
   margin-top: 2rem;
+}
+
+.page-container--auth {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.page-main--auth {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Footer */
@@ -2429,5 +2481,166 @@ select#technicians option + option {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Inspection form — feedback, touch targets, search */
+.form-page-feedback {
+  margin-bottom: 1rem;
+}
+
+.form-page-feedback ul {
+  margin-top: 0.5rem;
+}
+
+.form-inline-feedback:empty {
+  display: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.form-inline-feedback:not(:empty) {
+  font-size: 0.875rem;
+}
+
+#inspection-form .form-control.is-invalid,
+.mechanic-fieldset.is-invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.15);
+}
+
+.mechanic-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.mechanic-fieldset .custom-control {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.mechanic-fieldset .custom-control-label {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  cursor: pointer;
+}
+
+.form-check-input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.6rem;
+}
+
+.form-pdf-preview-btn {
+  min-height: 44px;
+  min-width: 44px;
+  white-space: nowrap;
+}
+
+.form-submit-btn {
+  min-height: 48px;
+  min-width: 220px;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.inspection-option-label {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  margin: 0;
+}
+
+.custom-control-input:focus ~ .inspection-option-label {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.search-item,
+.search-item-text,
+.search-item-report {
+  min-height: 44px;
+}
+
+.search-item-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  padding: 0.25rem 0;
+}
+
+.search-item-report {
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customer-search-dropdown-content {
+  padding: 0;
+}
+
+.search-dropdown-empty,
+.customer-result {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.75rem 1rem;
+  min-height: 44px;
+  cursor: pointer;
+  display: block;
+  border-bottom: 1px solid #eee;
+}
+
+.customer-result:hover,
+.customer-result:focus {
+  background-color: #f8f9fa;
+  outline: none;
+}
+
+.customer-result-name {
+  display: block;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.customer-result-meta {
+  display: block;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.customer-result-meta span {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .form-pdf-preview-btn .d-md-inline {
+    display: none !important;
+  }
+
+  .category-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .inspection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-submit-btn {
+    width: 100%;
+    max-width: 100%;
   }
 }

@@ -202,8 +202,6 @@
                       vehicule = v;
                     }
                   });
-                  // console.log(`Found license plate: ${licensePlate} for vehicule_id: ${report.vehicule_id} and report_id: ${report.report_id}`);
-                  // console.log(`Found vehicule id : ${vehicule.license_plate} for vehicule_id: ${report.vehicule_id}`);
                   %>
                   <tr class="hover:bg-gray-50">
                     <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
@@ -740,8 +738,6 @@
   <div id="toast-container" class="fixed top-2 right-2 flex flex-col items-end space-y-2 popup-container" aria-live="assertive" aria-atomic="true">
   </div>
 
-  <script src="/static/js/admin.js"></script>
-  
 <%- include('partials/footer', {
   showScripts: true,
   customScripts: ['/static/js/admin.js']

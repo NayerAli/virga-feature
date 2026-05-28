@@ -37,7 +37,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const escapeAttribute = (value) => escapeHtml(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  const formFeedbackEl = document.getElementById('formFeedback');
+  const vehicleSearchFeedbackEl = document.getElementById('vehicleSearchFeedback');
+  const customerSearchFeedbackEl = document.getElementById('customerSearchFeedback');
+
   const normalizeLicensePlateSearch = (value) => String(value || '').replace(/[\s-]/g, '').toLowerCase();
+
+  const clearFormErrors = () => {
+    if (formFeedbackEl) {
+      formFeedbackEl.className = 'form-page-feedback d-none';
+      formFeedbackEl.innerHTML = '';
+    }
+    document.querySelectorAll('#inspection-form .is-invalid').forEach((el) => {
+      el.classList.remove('is-invalid');
+      el.removeAttribute('aria-invalid');
+    });
+    const mechanicFieldset = document.getElementById('mechanicList');
+    if (mechanicFieldset) {
+      mechanicFieldset.classList.remove('is-invalid');
+    }
+  };
+
+  const showFormFeedback = (messages, variant) => {
+    if (!formFeedbackEl || !messages.length) {
+      return;
+    }
+    const iconClass = variant === 'danger' ? 'fa-times-circle' : 'fa-exclamation-triangle';
+    const listItems = messages.map((msg) => `<li>${escapeHtml(msg)}</li>`).join('');
+    formFeedbackEl.className = `form-page-feedback alert alert-${variant}`;
+    formFeedbackEl.innerHTML = `<i class="fas ${iconClass}" aria-hidden="true"></i><ul class="mb-0 pl-3">${listItems}</ul>`;
+    formFeedbackEl.classList.remove('d-none');
+    formFeedbackEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const showInlineFeedback = (el, message, variant) => {
+    if (!el) {
+      return;
+    }
+    const iconMap = {
+      info: 'fa-spinner fa-spin',
+      success: 'fa-check-circle',
+      warning: 'fa-exclamation-triangle',
+      danger: 'fa-exclamation-circle'
+    };
+    const icon = iconMap[variant] || 'fa-info-circle';
+    el.className = `form-inline-feedback alert alert-${variant} py-2 px-3 mb-0 mt-1`;
+    el.innerHTML = `<i class="fas ${icon} pr-1" aria-hidden="true"></i> ${escapeHtml(message)}`;
+    el.setAttribute('role', variant === 'info' ? 'status' : 'alert');
+  };
+
+  const clearInlineFeedback = (el) => {
+    if (!el) {
+      return;
+    }
+    el.className = 'form-inline-feedback';
+    el.innerHTML = '';
+    el.setAttribute('role', 'status');
+  };
 
   const updateBrandLogoPreview = () => {
     const brandInput = document.getElementById('brand');
@@ -55,8 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // If the form is with report id (/report/:id), fill the form with the data
   const id = window.location.href.split('/').pop();
   if (id != 'form') {
-    console.log(`Fetching data for report ${id}`);
-
     // Fetch report data
     fetch(`/report/api-inspection-report/${id}`)
       .then(response => response.json())
@@ -71,10 +125,35 @@ document.addEventListener('DOMContentLoaded', () => {
     previewPdfBtn.hidden = true;
   }
 
+  if (form) {
+    form.addEventListener('input', (e) => {
+      if (e.target.matches('input, textarea, select')) {
+        e.target.classList.remove('is-invalid');
+        e.target.removeAttribute('aria-invalid');
+        if (formFeedbackEl && !formFeedbackEl.classList.contains('d-none')) {
+          clearFormErrors();
+        }
+      }
+    });
+
+    document.querySelectorAll('.mechanic-checkbox').forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        const mechanicFieldset = document.getElementById('mechanicList');
+        if (mechanicFieldset) {
+          mechanicFieldset.classList.remove('is-invalid');
+        }
+        if (formFeedbackEl && !formFeedbackEl.classList.contains('d-none')) {
+          clearFormErrors();
+        }
+      });
+    });
+  }
+
   // Form submission handler
   if (form) {
     form.addEventListener('submit', (e) => {
       try {
+        clearFormErrors();
         if (!validateForm()) {
           console.error('Form validation failed, preventing submission');
           e.preventDefault();
@@ -90,8 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
           } else {
             formData.set('is_company', false);
           }
-
-          console.info('Form validation successful, allowing submission');
 
         }
       } catch (error) {
@@ -239,7 +316,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  previewPdfBtn.addEventListener('click', async () => {
+  if (previewPdfBtn) previewPdfBtn.addEventListener('click', async () => {
+    clearFormErrors();
     if (!validateForm(true)) {
       console.error('Form validation failed, preventing submission');
       return;
@@ -263,127 +341,110 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
     
+  function markInvalid(input) {
+    if (!input) {
+      return;
+    }
+    if (input.id === 'mechanicList') {
+      input.classList.add('is-invalid');
+      return;
+    }
+    input.classList.add('is-invalid');
+    input.setAttribute('aria-invalid', 'true');
+  }
+
   // Client-side validation function
   function validateForm(isPreview = false) {
     try {
-      let isValid = true;
-      
-      // Validate required fields
+      const errorMessages = [];
+      const invalidFields = [];
+
       const requiredFields = [
         { id: 'client_name', message: 'Le nom du client est requis.' },
-        { id: 'license_plate', message: 'L\'immatriculation est requise.' }
+        { id: 'license_plate', message: 'L\'immatriculation est requise.' },
+        { id: 'brand', message: 'La marque du véhicule est requise.' }
       ];
 
-      requiredFields.forEach(field => {
+      requiredFields.forEach((field) => {
         const input = document.getElementById(field.id);
         if (!input) {
-          console.error(`Required field not found: ${field.id}`);
-          isValid = false;
+          errorMessages.push(field.message);
           return;
         }
-        
         if (!input.value.trim()) {
-          console.error(`Empty required field: ${field.id}`);
-          showError(input, field.message);
-          isValid = false;
+          errorMessages.push(field.message);
+          invalidFields.push(input);
         }
       });
 
-      // Validate phone format
       const phoneInput = document.getElementById('client_phone');
       if (phoneInput && phoneInput.value) {
         const phoneRegex = /^[0-9]{10}$/;
         if (!phoneRegex.test(phoneInput.value.trim())) {
-          console.error('Invalid phone format');
-          showError(phoneInput, 'Format de téléphone invalide (10 chiffres requis).');
-          isValid = false;
+          errorMessages.push('Format de téléphone invalide (10 chiffres requis).');
+          invalidFields.push(phoneInput);
         }
       }
 
-      // Validate email format if provided
       const emailInput = document.getElementById('client_email');
       if (emailInput && emailInput.value) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(emailInput.value.trim())) {
-          console.error('Invalid email format');
-          showError(emailInput, 'Format d\'email invalide.');
-          isValid = false;
+          errorMessages.push('Format d\'e-mail invalide.');
+          invalidFields.push(emailInput);
         }
       }
 
-      // Validate license plate format
-      const licensePlateInput = document.getElementById('license_plate');
-      if (licensePlateInput && licensePlateInput.value) {
+      const plateInput = document.getElementById('license_plate');
+      if (plateInput && plateInput.value) {
         const sivRegex = /^[A-Z]{2}[-]?[0-9]{3}[-]?[A-Z]{2}$/;
         const fniRegex = /^[0-9]{3}\s?[A-Z]{3}\s?[0-9]{3}$/;
-        const value = licensePlateInput.value.trim().toUpperCase();
-        
+        const value = plateInput.value.trim().toUpperCase();
         if (!sivRegex.test(value) && !fniRegex.test(value)) {
-          console.error('Invalid license plate format');
-          showError(licensePlateInput, 'Format d\'immatriculation invalide (ex: AB-123-CD ou 123 ABC 000)');
-          isValid = false;
+          errorMessages.push('Format d\'immatriculation invalide (ex. AB-123-CD ou 123 ABC 000).');
+          invalidFields.push(plateInput);
         }
       }
 
-      // Validate all dates format if present
       const dateInputs = document.querySelectorAll('[type="date"]');
-      dateInputs.forEach(dateInput => {
+      dateInputs.forEach((dateInput) => {
         if (dateInput.value.trim()) {
           const date = new Date(dateInput.value);
-          if (!date) {
-            showError(dateInput, 'Impossible de convertir la date en format valide (ex: 19/11/2023)');
-            isValid = false;
+          if (Number.isNaN(date.getTime())) {
+            errorMessages.push('Une date saisie n\'est pas valide.');
+            invalidFields.push(dateInput);
           }
         }
       });
 
-      // Trim all inputs
-      const inputs = document.querySelectorAll('input');
-      inputs.forEach(input => {
-        input.value = input.value.trim();
+      document.querySelectorAll('#inspection-form input[type="text"], #inspection-form input[type="email"], #inspection-form input[type="tel"], #inspection-form textarea').forEach((input) => {
+        if (input.type !== 'hidden') {
+          input.value = input.value.trim();
+        }
       });
 
-      // Validate at least one mechanic is selected
-      const mechanics = document.querySelectorAll('.custom-control-input.mechanic-checkbox:checked');
+      const mechanics = document.querySelectorAll('.mechanic-checkbox:checked');
+      const mechanicFieldset = document.getElementById('mechanicList');
       if (mechanics.length === 0 && !isPreview) {
-        showError(document.getElementById('mechanicList'), 'Au moins un mécanicien est requis.');
-        isValid = false;
+        errorMessages.push('Sélectionnez au moins un mécanicien.');
+        invalidFields.push(mechanicFieldset);
       }
 
-      console.info(`Form validation result: ${isValid}`);
-      return isValid;
+      if (errorMessages.length > 0) {
+        invalidFields.forEach(markInvalid);
+        showFormFeedback(errorMessages, 'danger');
+        const firstFocusable = invalidFields.find((el) => el && typeof el.focus === 'function');
+        if (firstFocusable) {
+          firstFocusable.focus();
+        }
+        return false;
+      }
+
+      return true;
     } catch (error) {
       console.error('Error in validateForm', error);
+      showFormFeedback(['Une erreur est survenue lors de la validation du formulaire.'], 'danger');
       return false;
-    }
-  }
-
-  // Helper functions for error handling
-  function showError(input, message) {
-    try {
-      if (!input) {
-        console.error('Cannot show error: input is null');
-        return;
-      }
-
-      const formGroup = input.closest('.form-group');
-      if (!formGroup) {
-        // console.error('Cannot show error: .form-group not found');
-        return;
-      }
-
-      const errorDiv = formGroup.querySelector('.error-message') || document.createElement('div');
-      errorDiv.className = 'error-message text-danger small mt-1';
-      errorDiv.textContent = message;
-      
-      if (!formGroup.querySelector('.error-message')) {
-        formGroup.appendChild(errorDiv);
-      }
-      input.classList.add('is-invalid');
-      
-      console.error(`Error shown: ${message}`);
-    } catch (error) {
-      console.error('Error in showError', error);
     }
   }
 
@@ -406,8 +467,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Fill form with data using their key as html element id
   function fillForm(data) {
-    console.log('Filling form with data');
-    console.log(data);
     const form = document.getElementById('inspection-form');
 
     if (form) {
@@ -436,7 +495,6 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let ir in data.inspection_results) {
           const radioName = `${data.inspection_results[ir].category}_${data.inspection_results[ir].item_id}_${data.inspection_results[ir].value.value}`;
           const radio = document.getElementById(radioName);
-          // console.log('Building radio:', radioName);
           if (radio) {
             radio.checked = true;
           }
@@ -486,7 +544,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const nonVerifieRadio = group.querySelector('input[type="radio"][value="2"]');
         if (nonVerifieRadio) {
           nonVerifieRadio.checked = true;
-          console.info(`Set radio with id="2" to checked for group: ${group.id}`);
         } else {
           console.error(`Radio with id="2" not found in group: ${group.id}`);
         }
@@ -570,25 +627,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Handle search functionality
   const handleSearch = async (immatriculation, id) => {
-    console.log(`Handling search for: ${immatriculation} with id: ${id}`);
-
-    const searchResult = document.getElementById('search_result');
-    
     if (!immatriculation) {
-      searchResult.innerHTML = `
-        <div class="alert alert-warning">
-          Veuillez entrer une immatriculation
-        </div>
-      `;
+      showInlineFeedback(vehicleSearchFeedbackEl, 'Saisissez une immatriculation.', 'warning');
       return;
     }
 
     try {
-      searchResult.innerHTML = `
-        <div class="alert alert-info">
-          <i class="fas fa-spinner fa-spin pr-1"></i> Recherche en cours...
-        </div>
-      `;
+      showInlineFeedback(vehicleSearchFeedbackEl, 'Recherche en cours…', 'info');
 
       const response = await fetch(`/form/api-vehicule-details/${encodeURIComponent(id)}`);
       const data = await response.json();
@@ -597,32 +642,17 @@ document.addEventListener('DOMContentLoaded', () => {
       fillForm(data.customer);
 
       if (data.success) {
-        searchResult.innerHTML = `
-          <div class="alert alert-success">
-            <i class="fas fa-check-circle pr-1"></i> Véhicule trouvé ! Les informations ont été pré-remplies.
-          </div>
-        `;
-        
+        showInlineFeedback(vehicleSearchFeedbackEl, 'Véhicule trouvé : les champs ont été pré-remplis.', 'success');
         dropdown.classList.add('d-none');
       } else {
-        searchResult.innerHTML = `
-          <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle pr-1"></i> ${data.message}
-          </div>
-        `;
+        showInlineFeedback(vehicleSearchFeedbackEl, data.message || 'Véhicule introuvable.', 'warning');
       }
 
-      setTimeout(() => {
-        searchResult.innerHTML = '';
-      }, 2500);
+      setTimeout(() => clearInlineFeedback(vehicleSearchFeedbackEl), 3000);
 
     } catch (error) {
       console.error('Search error:', error);
-      searchResult.innerHTML = `
-        <div class="alert alert-danger">
-          <i class="fas fa-exclamation-circle"></i> Une erreur est survenue lors de la recherche
-        </div>
-      `;
+      showInlineFeedback(vehicleSearchFeedbackEl, 'Erreur lors de la recherche du véhicule.', 'danger');
     }
   };
 
@@ -681,7 +711,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const resultsContainer = document.querySelector('.customer-search-dropdown-content');
       
       if (filteredCustomers.length === 0) {
-        resultsContainer.innerHTML = '<div class="p-2 text-gray-500">Aucun client trouvé</div>';
+        resultsContainer.innerHTML = '<div class="search-dropdown-empty">Aucun client trouvé</div>';
+        customerDropdown.classList.remove('d-none');
         return;
       }
       
@@ -693,47 +724,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const safeCustomerAddress = escapeHtml(customer.address);
 
         return `
-        <div class="customer-result p-2 hover:bg-gray-100 cursor-pointer" 
+        <button type="button" class="customer-result"
              data-id="${safeCustomerId}"
              data-name="${escapeAttribute(customer.name)}"
              data-phone="${escapeAttribute(customer.phone || '')}"
              data-address="${escapeAttribute(customer.address || '')}">
-          <div class="font-medium"><i class="fas fa-user mr-2"></i>${safeCustomerName}</div>
-          <div class="text-sm text-gray-600">
-            ${customer.phone ? `<i class="fas fa-phone mr-2"></i>${safeCustomerPhone}` : ''}
-            ${customer.email ? `<br><i class="fas fa-envelope mr-2"></i>${safeCustomerEmail}` : ''}
-            ${customer.address ? `<br><i class="fas fa-map-marker-alt mr-2"></i>${safeCustomerAddress}` : ''}
-          </div>
-        </div>
-        <div class="border-b border-gray-200"></div>
+          <span class="customer-result-name"><i class="fas fa-user" aria-hidden="true"></i> ${safeCustomerName}</span>
+          <span class="customer-result-meta text-muted">
+            ${customer.phone ? `<span><i class="fas fa-phone" aria-hidden="true"></i> ${safeCustomerPhone}</span>` : ''}
+            ${customer.email ? `<span><i class="fas fa-envelope" aria-hidden="true"></i> ${safeCustomerEmail}</span>` : ''}
+            ${customer.address ? `<span><i class="fas fa-map-marker-alt" aria-hidden="true"></i> ${safeCustomerAddress}</span>` : ''}
+          </span>
+        </button>
       `;
       }).join('');
       
       customerDropdown.classList.remove('d-none');
     } catch (error) {
       console.error('Search error:', error);
-      const searchResult = document.getElementById('customer_search_result');
-      searchResult.innerHTML = `
-        <div class="alert alert-danger">
-          <i class="fas fa-exclamation-circle"></i> Une erreur est survenue lors de la recherche
-        </div>
-      `;
-      setTimeout(() => {
-        searchResult.innerHTML = '';
-      }, 2500);
+      showInlineFeedback(customerSearchFeedbackEl, 'Erreur lors de la recherche client.', 'danger');
+      setTimeout(() => clearInlineFeedback(customerSearchFeedbackEl), 3000);
     }
   };
 
   // Select customer from ID
   const selectCustomerFromID = async (customerId) => {
-    const searchResult = document.getElementById('customer_search_result');
-    
     try {
-      searchResult.innerHTML = `
-        <div class="alert alert-info">
-          <i class="fas fa-spinner fa-spin pr-1"></i> Chargement des informations...
-        </div>
-      `;
+      showInlineFeedback(customerSearchFeedbackEl, 'Chargement des informations client…', 'info');
 
       const customer = filteredCustomers.find(c => c.customer_id === customerId);
       
@@ -774,66 +791,15 @@ document.addEventListener('DOMContentLoaded', () => {
           originalCustomerIdField.value = originalCustomerId;
         }
 
-        searchResult.innerHTML = `
-          <div class="alert alert-success">
-            <i class="fas fa-check-circle pr-1"></i> Informations client chargées avec succès.
-          </div>
-        `;
-        
+        showInlineFeedback(customerSearchFeedbackEl, 'Informations client chargées.', 'success');
         customerDropdown.classList.add('d-none');
       }
 
-      setTimeout(() => {
-        searchResult.innerHTML = '';
-      }, 2500);
+      setTimeout(() => clearInlineFeedback(customerSearchFeedbackEl), 3000);
 
     } catch (error) {
       console.error('Error selecting customer:', error);
-      searchResult.innerHTML = `
-        <div class="alert alert-danger">
-          <i class="fas fa-exclamation-circle"></i> Une erreur est survenue
-        </div>
-      `;
+      showInlineFeedback(customerSearchFeedbackEl, 'Erreur lors du chargement du client.', 'danger');
     }
   };
-
-  // Add CSS styles for customer search
-  const style = document.createElement('style');
-  style.textContent = `
-    .search-dropdown {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-      background: white;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.375rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    
-    .customer-result {
-      transition: background-color 0.2s;
-    }
-    
-    .customer-result:hover {
-      background-color: #f3f4f6;
-    }
-    
-    .customer-result .font-medium {
-      color: #1a202c;
-      font-weight: 500;
-    }
-    
-    .customer-result .text-sm {
-      font-size: 0.875rem;
-    }
-    
-    .customer-result i {
-      color: #4a5568;
-    }
-  `;
-  document.head.appendChild(style);
 });

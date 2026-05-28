@@ -1,11 +1,9 @@
 ﻿<%- include('partials/header', {
   title: 'Connexion',
-  bodyClass: 'login-body',
-  containerClass: 'login-container',
-  headerClass: 'login-header',
-  navClass: '',
   showNav: false,
-  currentPage: 'login'
+  currentPage: 'login',
+  authPage: true,
+  bodyClass: 'app-body'
 }) %>
 
 <div class="row justify-content-center mt-5">
@@ -16,35 +14,54 @@
         <h1 class="h4 py-1">Connexion</h1>
       </div>
       <div class="card-body">
-        <% if (error) { %>
-          <div class="alert alert-danger" role="alert">
+        <%
+          const maxAttempts = typeof maxLoginAttempts !== 'undefined' ? maxLoginAttempts : 4;
+          const meta = typeof loginMeta !== 'undefined' && loginMeta ? loginMeta : null;
+          const isLocked = meta ? Boolean(meta.isLocked) : false;
+          const remainingAttempts = meta && typeof meta.remainingAttempts === 'number'
+            ? meta.remainingAttempts
+            : maxAttempts;
+          const showRemaining = meta && !isLocked && remainingAttempts < maxAttempts && remainingAttempts > 0;
+          const lockMinutes = meta && typeof meta.lockMinutesRemaining === 'number'
+            ? meta.lockMinutesRemaining
+            : (typeof lockTimeMinutes !== 'undefined' ? lockTimeMinutes : 15);
+        %>
+        <% if (isLocked) { %>
+          <div id="loginFeedback" class="alert alert-warning" role="alert" aria-live="polite">
+            <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+            Trop de tentatives de connexion. Réessayez dans <%= lockMinutes %> minute<%= lockMinutes > 1 ? 's' : '' %>.
+          </div>
+        <% } else if (error) { %>
+          <div id="loginFeedback" class="alert alert-danger" role="alert" aria-live="polite">
+            <i class="fas fa-times-circle" aria-hidden="true"></i>
             <%= error %>
+            <% if (showRemaining) { %>
+              <div class="mt-2 mb-0 small font-weight-normal">
+                Il vous reste <%= remainingAttempts %> tentative<%= remainingAttempts > 1 ? 's' : '' %> avant verrouillage temporaire du compte.
+              </div>
+            <% } %>
           </div>
         <% } %>
-        <div id="loginAttemptsAlert" class="alert alert-warning d-none" role="alert">
-          <i class="fas fa-exclamation-triangle"></i>
-          <span id="loginAttemptsMessage"></span>
-        </div>
-        <form id="loginForm" action="/auth/login" method="POST">
+        <form id="loginForm" action="/auth/login" method="POST"<%= isLocked ? ' aria-disabled="true"' : '' %>>
           <div class="form-group">
             <label for="username">
               <i class="fas fa-user"></i> Nom d'utilisateur
             </label>
-            <input type="text" class="form-control" id="username" name="username" required>
+            <input type="text" class="form-control" id="username" name="username" required autocomplete="username"<%= isLocked ? ' disabled' : '' %>>
           </div>
           <div class="form-group">
             <label for="password">
               <i class="fas fa-lock"></i> Mot de passe
             </label>
             <div class="input-group">
-              <input type="password" class="form-control" id="password" name="password" required>
+              <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password"<%= isLocked ? ' disabled' : '' %>>
               <div class="input-group-append" style="cursor: pointer;">
-                <span class="input-group-text"><i class="fas fa-eye" id="togglePassword"></i></span>
+                <span class="input-group-text" id="togglePasswordBtn" role="button" tabindex="0" aria-label="Afficher ou masquer le mot de passe"<%= isLocked ? ' aria-disabled="true"' : '' %>><i class="fas fa-eye" id="togglePassword" aria-hidden="true"></i></span>
               </div>
             </div>
           </div>
           <div class="my-3">
-            <button type="submit" id="loginButton" class="btn btn-primary btn-block">
+            <button type="submit" id="loginButton" class="btn btn-primary btn-block"<%= isLocked ? ' disabled' : '' %>>
               <i class="fas fa-sign-in-alt"></i> Se connecter
             </button>
           </div>
@@ -55,101 +72,31 @@
 </div>
 
 <script>
-const MAX_LOGIN_ATTEMPTS = 3;
-const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
-
-function checkLoginAttempts() {
-  const username = document.getElementById('username').value;
-  if (!username) return true;
-  
-  const attemptsKey = `loginAttempts_${username}`;
-  const attempts = JSON.parse(localStorage.getItem(attemptsKey) || '{"count": 0}');
-  
-  if (attempts.lockoutUntil && attempts.lockoutUntil > Date.now()) {
-    const waitTime = Math.ceil((attempts.lockoutUntil - Date.now()) / 60000);
-    showLoginAlert(`Account is locked. Please try again in ${waitTime} minutes.`, true);
-    return false;
-  }
-  
-  if (attempts.lockoutUntil && attempts.lockoutUntil <= Date.now()) {
-    localStorage.removeItem(attemptsKey);
-    hideLoginAlert();
-    return true;
-  }
-  
-  const remainingAttempts = MAX_LOGIN_ATTEMPTS - attempts.count;
-  if (remainingAttempts < MAX_LOGIN_ATTEMPTS && remainingAttempts > 0) {
-    showLoginAlert(`${remainingAttempts} login attempts remaining.`, false);
-  }
-  
-  return true;
-}
-
-function recordFailedAttempt(username) {
-  const attemptsKey = `loginAttempts_${username}`;
-  const attempts = JSON.parse(localStorage.getItem(attemptsKey) || '{"count": 0}');
-  attempts.count += 1;
-  
-  if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
-    attempts.lockoutUntil = Date.now() + LOCKOUT_TIME;
-  }
-  
-  localStorage.setItem(attemptsKey, JSON.stringify(attempts));
-  return MAX_LOGIN_ATTEMPTS - attempts.count;
-}
-
-function showLoginAlert(message, isLocked) {
-  const alert = document.getElementById('loginAttemptsAlert');
-  const loginButton = document.getElementById('loginButton');
-  const msg = document.getElementById('loginAttemptsMessage');
-  
-  alert.classList.remove('d-none');
-  msg.textContent = message;
-  
-  if (isLocked) {
-    loginButton.disabled = true;
-    loginButton.classList.add('opacity-50');
-  }
-}
-
-function hideLoginAlert() {
-  const alert = document.getElementById('loginAttemptsAlert');
-  const loginButton = document.getElementById('loginButton');
-  
-  alert.classList.add('d-none');
-  loginButton.disabled = false;
-  loginButton.classList.remove('opacity-50');
-}
-
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-  const username = document.getElementById('username').value;
-  if (!checkLoginAttempts()) {
-    e.preventDefault();
+(function() {
+  const toggleBtn = document.getElementById('togglePasswordBtn');
+  const passwordInput = document.getElementById('password');
+  if (!toggleBtn || !passwordInput || passwordInput.disabled) {
     return;
   }
-  
-  // Store the username for checking the response
-  sessionStorage.setItem('lastLoginAttempt', username);
-});
 
-// Check for failed login response
-if ('<%= error %>' && sessionStorage.getItem('lastLoginAttempt')) {
-  const username = sessionStorage.getItem('lastLoginAttempt');
-  const remaining = recordFailedAttempt(username);
-  if (remaining <= 0) {
-    checkLoginAttempts();
+  function togglePasswordVisibility() {
+    const isPassword = passwordInput.type === 'password';
+    passwordInput.type = isPassword ? 'text' : 'password';
+    const icon = toggleBtn.querySelector('i');
+    if (icon) {
+      icon.classList.toggle('fa-eye', !isPassword);
+      icon.classList.toggle('fa-eye-slash', isPassword);
+    }
   }
-  sessionStorage.removeItem('lastLoginAttempt');
-}
 
-// Password toggle functionality
-document.getElementById('togglePassword').addEventListener('click', function() {
-  const passwordInput = document.getElementById('password');
-  passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
-});
-
-// Initial check on page load
-document.getElementById('username').addEventListener('input', checkLoginAttempts);
+  toggleBtn.addEventListener('click', togglePasswordVisibility);
+  toggleBtn.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      togglePasswordVisibility();
+    }
+  });
+})();
 </script>
 
 <%- include('partials/footer', {

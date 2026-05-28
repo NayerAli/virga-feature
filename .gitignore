@@ -18,3 +18,19 @@ ssl/
 
 # Ignore generated reports
 generated_reports/
+
+# Cursor IDE (agents, rules, skills — local only)
+.cursor/
+AGENTS.md
+*.test.js
+
+# Artefacts debug agents (VIRGA)
+/cookies*.txt
+/headers.txt
+/body.html
+/dashboard.html
+/login_out.html
+docker-compose.dev.yml
+docker-compose.test.yml
+docker-compose.seed.yml
+Dockerfile.test

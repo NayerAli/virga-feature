@@ -6,46 +6,49 @@
 }) %>
 
 <div class="content-wrapper">
-  <!-- Welcome Section
-  <div class="welcome-section">
-    <h2>
-      <i class="fas fa-user-circle"></i>
-      Bienvenue, <%= locals.user ? locals.user.username : 'Utilisateur' %>
-    </h2>
-    
-    <div class="quick-stats">
-      <div class="stat-card">
-        <i class="fas fa-file-alt"></i>
-        <div class="stat-info">
-          <h3>Rapports Totaux</h3>
-          <p><%= reports ? reports.length : 0 %></p>
-        </div>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-calendar-check"></i>
-        <div class="stat-info">
-          <h3>Rapports du Mois</h3>
-          <p><%= reports ? reports.filter(r => new Date(r.date).getMonth() === new Date().getMonth()).length : 0 %></p>
-        </div>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-clock"></i>
-        <div class="stat-info">
-          <h3>Dernière Activité</h3>
-          <p><%= reports && reports.length > 0 ? new Date(reports[0].date).toLocaleDateString('fr-FR') : 'Aucune' %></p>
-        </div>
-      </div>
+  <%
+    const flashSuccess = typeof success !== 'undefined' && success
+      ? (Array.isArray(success) ? success[0] : success)
+      : (locals.success && locals.success.length ? locals.success[0] : null);
+    const flashError = locals.error && locals.error.length ? locals.error[0] : null;
+    const routeError = errors && errors.length
+      ? (errors[0] === 'Error loading reports' ? 'Impossible de charger les rapports. Réessayez plus tard.' : errors[0])
+      : null;
+    const hasSearchQuery = typeof search !== 'undefined' && search && String(search).trim();
+  %>
+  <% if (routeError) { %>
+    <div id="dashboardFeedback" class="alert alert-danger" role="alert" aria-live="polite">
+      <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+      <%= routeError %>
     </div>
-  </div> -->
+  <% } else if (flashSuccess) { %>
+    <div id="dashboardFeedback" class="alert alert-success fade-out" role="status" aria-live="polite">
+      <i class="fas fa-check-circle" aria-hidden="true"></i>
+      <%= flashSuccess %>
+    </div>
+  <% } else if (flashError) { %>
+    <div id="dashboardFeedback" class="alert alert-danger fade-out" role="alert" aria-live="polite">
+      <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+      <%= flashError %>
+    </div>
+  <% } else { %>
+    <div id="dashboardFeedback" class="d-none" aria-live="polite"></div>
+  <% } %>
 
-  <!-- Main Content -->
   <section class="reports-section">
     <div class="section-header">
-      <h3><i class="fas fa-car"></i> Rapports Récents</h3>
+      <h3><i class="fas fa-car" aria-hidden="true"></i> Liste des rapports</h3>
       <div class="header-actions">
-        <div class="search-box flex items-center bg-white p-1 rounded-lg md:min-w-[400px]">
-          <i class="fas fa-search text-gray-500"></i>
-          <input type="text" id="searchReports" placeholder="Rechercher plaque, client, marque..." value="<%= typeof search !== 'undefined' ? search : '' %>">
+        <div class="search-box">
+          <label for="searchReports" class="sr-only">Rechercher un rapport</label>
+          <i class="fas fa-search" aria-hidden="true"></i>
+          <input type="search"
+                 id="searchReports"
+                 class="form-control"
+                 placeholder="Plaque, client, marque…"
+                 value="<%= typeof search !== 'undefined' ? search : '' %>"
+                 autocomplete="off"
+                 enterkeyhint="search">
         </div>
       </div>
     </div>
@@ -96,31 +99,38 @@
                 <td><%= new Date(report.created_at).toLocaleDateString('fr-FR') %></td>
                 <td>
                   <div class="action-buttons">
-                    <a href="/report/<%= report.report_id %>" 
-                       class="action-btn view" 
-                       title="Voir le rapport">
-                      <i class="fas fa-eye"></i>
+                    <a href="/report/<%= report.report_id %>"
+                       class="action-btn view"
+                       title="Voir le rapport"
+                       aria-label="Voir le rapport">
+                      <i class="fas fa-eye" aria-hidden="true"></i>
                     </a>
                     <a href="/report/preview/<%= report.report_id %>?fresh=<%= Date.now() %>"
-                       class="action-btn preview" 
-                       title="Prévisualiser PDF"
-                       target="_blank">
-                      <i class="fas fa-file-pdf"></i>
+                       class="action-btn preview"
+                       title="Prévisualiser le PDF"
+                       aria-label="Prévisualiser le PDF"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                      <i class="fas fa-file-pdf" aria-hidden="true"></i>
                     </a>
                     <a href="/report/download/<%= report.report_id %>?fresh=<%= Date.now() %>"
-                       class="action-btn download" 
-                       title="Télécharger">
-                      <i class="fas fa-download"></i>
+                       class="action-btn download"
+                       title="Télécharger le PDF"
+                       aria-label="Télécharger le PDF">
+                      <i class="fas fa-download" aria-hidden="true"></i>
                     </a>
                     <a href="/form/<%= report.report_id %>"
                        class="action-btn edit"
-                       title="Modifier">
-                       <i class="fa-solid fa-pen-to-square"></i>
+                       title="Modifier le rapport"
+                       aria-label="Modifier le rapport">
+                      <i class="fas fa-pen-to-square" aria-hidden="true"></i>
                     </a>
-                    <button class="action-btn delete"
+                    <button type="button"
+                            class="action-btn delete"
                             data-report-id="<%= report.report_id %>"
-                            title="Supprimer">
-                      <i class="fas fa-trash"></i>
+                            title="Supprimer le rapport"
+                            aria-label="Supprimer le rapport">
+                      <i class="fas fa-trash" aria-hidden="true"></i>
                     </button>
                   </div>
                 </td>
@@ -129,12 +139,17 @@
           <% } else { %>
             <tr>
               <td colspan="5" class="no-reports">
-                <i class="fas fa-info-circle"></i>
-                <p>Aucun rapport trouvé</p>
-                <a href="/form" class="btn btn-primary mt-3">
-                  <i class="fas fa-plus"></i>
-                  Créer un nouveau rapport
-                </a>
+                <i class="fas fa-info-circle" aria-hidden="true"></i>
+                <% if (hasSearchQuery) { %>
+                  <p>Aucun résultat pour «&nbsp;<%= search %>&nbsp;»</p>
+                  <p class="text-muted small mb-0">Modifiez votre recherche ou effacez le champ pour tout afficher.</p>
+                <% } else { %>
+                  <p>Aucun rapport pour le moment</p>
+                  <a href="/form" class="btn btn-primary mt-3">
+                    <i class="fas fa-plus" aria-hidden="true"></i>
+                    Créer un rapport
+                  </a>
+                <% } %>
               </td>
             </tr>
           <% } %>
@@ -178,23 +193,22 @@
   </section>
 
   <!-- Floating Action Button -->
-  <a href="/form" class="fab-button" title="Créer un nouveau rapport">
-    <i class="fas fa-plus"></i>
+  <a href="/form" class="fab-button" title="Créer un rapport" aria-label="Créer un rapport">
+    <i class="fas fa-plus" aria-hidden="true"></i>
     <span>Nouveau rapport</span>
   </a>
 </div>
 
-<!-- Delete Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog">
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalTitle" aria-modal="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">
-          <i class="fas fa-exclamation-triangle"></i>
+        <h5 class="modal-title" id="deleteModalTitle">
+          <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
           Confirmer la suppression
         </h5>
-        <button type="button" class="close" data-dismiss="modal">
-          <span>&times;</span>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+          <span aria-hidden="true">&times;</span>
         </button>
       </div>
       <div class="modal-body">
