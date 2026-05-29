@@ -57,7 +57,7 @@
           </div>
           <div class="p-3 overflow-x-auto">
             <% if (users && users.length > 0) { %>
-              <table class="min-w-full divide-y divide-gray-200">
+              <table class="min-w-full divide-y divide-gray-200" data-label="des utilisateurs">
                 <thead class="bg-gray-50">
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nom complet</th>
@@ -133,7 +133,7 @@
           </div>
           <div class="p-3 overflow-x-auto">
             <% if (customers && customers.length > 0) { %>
-              <table class="min-w-full divide-y divide-gray-200 relative">
+              <table class="min-w-full divide-y divide-gray-200 relative" data-label="des clients">
                 <thead class="bg-gray-50">
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
@@ -185,7 +185,7 @@
         </div>
         <div class="p-3 overflow-x-auto">
           <% if (inspectionReports && inspectionReports.length > 0) { %>
-            <table class="min-w-full divide-y divide-gray-200">
+            <table class="min-w-full divide-y divide-gray-200" data-label="des rapports d'inspection">
               <thead class="bg-gray-50">
                 <tr>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID Rapport</th>
@@ -245,7 +245,7 @@
         </div>
         <div class="p-3 overflow-x-auto">
           <% if (vehicules && vehicules.length > 0) { %>
-            <table class="min-w-full divide-y divide-gray-200">
+            <table class="min-w-full divide-y divide-gray-200" data-label="des véhicules">
               <thead class="bg-gray-50">
                 <tr>
                   <% Object.keys(vehicules[0]).forEach(key => { %>
@@ -740,5 +740,5 @@
 
 <%- include('partials/footer', {
   showScripts: true,
-  customScripts: ['/static/js/admin.js']
+  customScripts: ['/static/js/admin.js', '/static/js/admin-pagination.js']
 }) %>

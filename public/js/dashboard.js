@@ -3,7 +3,12 @@
 document.addEventListener('DOMContentLoaded', () => {
   let reportToDelete = null;
   let deleteButtonToDelete = null;
-  const pageSize = 10;
+
+  const PAGE_SIZE_STORAGE_KEY = 'dashboard-pagination:pageSize';
+  const paginationUi = window.VirgaPaginationUi;
+  let pageSize = paginationUi
+    ? paginationUi.readStoredPageSize(PAGE_SIZE_STORAGE_KEY, 10)
+    : 10;
   let currentPage = 1;
 
   // Attach event listeners to delete buttons
@@ -99,47 +104,32 @@ document.addEventListener('DOMContentLoaded', () => {
   searchInput.value = urlParams.searchParams.get('search') || '';
   currentPage = Number.parseInt(urlParams.searchParams.get('page'), 10) || 1;
 
+  const scrollToReportsSection = () => {
+    document.querySelector('.reports-section')?.scrollIntoView({ block: 'start' });
+  };
+
   const renderPagination = (pagination) => {
-    if (!paginationContainer || !pagination) return;
+    if (!paginationContainer || !paginationUi) return;
 
-    const summary = pagination.totalReports > 0
-      ? `Rapports <strong>${pagination.startItem}</strong> à <strong>${pagination.endItem}</strong> sur <strong>${pagination.totalReports}</strong>`
-      : 'Aucun rapport à afficher';
+    paginationContainer.innerHTML = paginationUi.renderDashboardPaginationHtml(pagination, pageSize);
+    paginationContainer.classList.toggle(
+      'dashboard-pagination--single-page',
+      !pagination || pagination.totalPages <= 1
+    );
+    paginationContainer.classList.toggle(
+      'dashboard-pagination--many',
+      pagination && paginationUi.isManyPages(pagination.totalPages)
+    );
+  };
 
-    if (pagination.totalPages <= 1) {
-      paginationContainer.innerHTML = `<div class="pagination-summary">${summary}</div>`;
-      return;
+  const readInitialPagination = () => {
+    const script = document.getElementById('dashboardInitialPagination');
+    if (!script) return null;
+    try {
+      return JSON.parse(script.textContent);
+    } catch {
+      return null;
     }
-
-    const previousDisabled = pagination.hasPreviousPage ? '' : 'disabled';
-    const nextDisabled = pagination.hasNextPage ? '' : 'disabled';
-    const previousAria = pagination.hasPreviousPage ? '' : 'aria-disabled="true" tabindex="-1"';
-    const nextAria = pagination.hasNextPage ? '' : 'aria-disabled="true" tabindex="-1"';
-
-    paginationContainer.innerHTML = `
-      <div class="pagination-summary">${summary}</div>
-      <nav class="pagination-controls" aria-label="Navigation entre les pages de rapports">
-        <button type="button"
-                class="pagination-btn ${previousDisabled}"
-                data-page="${pagination.previousPage}"
-                aria-label="Page précédente"
-                ${previousAria}>
-          <i class="fas fa-chevron-left"></i>
-          Précédent
-        </button>
-        <span class="pagination-current">
-          Page <strong>${pagination.currentPage}</strong> / <strong>${pagination.totalPages}</strong>
-        </span>
-        <button type="button"
-                class="pagination-btn ${nextDisabled}"
-                data-page="${pagination.nextPage}"
-                aria-label="Page suivante"
-                ${nextAria}>
-          Suivant
-          <i class="fas fa-chevron-right"></i>
-        </button>
-      </nav>
-    `;
   };
 
   const renderEmptyState = (searchValue) => {
@@ -259,7 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState({}, '', nextUrl);
   };
 
-  const handleSearch = async (page = 1) => {
+  const handleSearch = async (page = 1, options = {}) => {
+    const { scrollToTop = false } = options;
     const searchValue = searchInput.value.trim();
     const normalizedPlateSearch = normalizeLicensePlateSearch(searchValue);
     try {
@@ -273,6 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateTable(data.reports || [], searchValue);
       renderPagination(data.pagination);
       updateBrowserUrl(searchValue, currentPage);
+      if (scrollToTop) scrollToReportsSection();
     } catch (error) {
       console.error('Search error:', error);
       showDashboardFeedback('Erreur lors de la recherche. Réessayez.', 'error');
@@ -286,21 +278,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (paginationContainer) {
     paginationContainer.addEventListener('click', (event) => {
-      const button = event.target.closest('.pagination-btn');
-      if (!button || button.classList.contains('disabled')) return;
+      const sizeButton = event.target.closest('[data-page-size]');
+      if (sizeButton) {
+        const nextSize = Number(sizeButton.dataset.pageSize);
+        if (!paginationUi.PAGE_SIZE_OPTIONS.includes(nextSize) || nextSize === pageSize) return;
+        pageSize = nextSize;
+        paginationUi.writeStoredPageSize(PAGE_SIZE_STORAGE_KEY, pageSize);
+        handleSearch(1, { scrollToTop: true });
+        return;
+      }
+
+      const button = event.target.closest('[data-page]');
+      if (!button || button.disabled || button.classList.contains('disabled')) return;
       event.preventDefault();
 
-      const datasetPage = Number.parseInt(button.dataset.page, 10);
-      const hrefPage = (() => {
-        try {
-          return Number.parseInt(new URL(button.getAttribute('href'), window.location.origin).searchParams.get('page'), 10);
-        } catch (error) {
-          return NaN;
-        }
-      })();
-      const requestedPage = datasetPage || hrefPage || 1;
-
+      const requestedPage = Number.parseInt(button.dataset.page, 10);
+      if (Number.isNaN(requestedPage)) return;
       handleSearch(requestedPage);
     });
+
+    paginationContainer.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      const input = event.target.closest('.dashboard-page-input');
+      if (!input) return;
+      event.preventDefault();
+      const requestedPage = Number.parseInt(input.value, 10);
+      if (Number.isNaN(requestedPage)) return;
+      handleSearch(requestedPage);
+      input.blur();
+    });
+
+    paginationContainer.addEventListener('change', (event) => {
+      const input = event.target.closest('.dashboard-page-input');
+      if (!input) return;
+      const requestedPage = Number.parseInt(input.value, 10);
+      if (Number.isNaN(requestedPage)) return;
+      handleSearch(requestedPage);
+    });
+  }
+
+  const initialPagination = readInitialPagination();
+  if (initialPagination && initialPagination.pageSize && initialPagination.pageSize !== pageSize) {
+    handleSearch(currentPage, { scrollToTop: false });
+  } else if (initialPagination) {
+    renderPagination(initialPagination);
   }
 });

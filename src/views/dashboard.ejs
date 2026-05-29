@@ -157,39 +157,8 @@
       </table>
     </div>
 
-    <div class="dashboard-pagination" id="dashboardPagination" aria-label="Pagination des rapports">
-      <div class="pagination-summary">
-        <% if (pagination && pagination.totalReports > 0) { %>
-          Rapports <strong><%= pagination.startItem %></strong> à <strong><%= pagination.endItem %></strong>
-          sur <strong><%= pagination.totalReports %></strong>
-        <% } else { %>
-          Aucun rapport à afficher
-        <% } %>
-      </div>
-      <% if (pagination && pagination.totalPages > 1) { %>
-        <nav class="pagination-controls" aria-label="Navigation entre les pages de rapports">
-          <a class="pagination-btn <%= pagination.hasPreviousPage ? '' : 'disabled' %>"
-             href="/dashboard?page=<%= pagination.previousPage %>&search=<%= encodeURIComponent(typeof search !== 'undefined' ? search : '') %>"
-             data-page="<%= pagination.previousPage %>"
-             aria-label="Page précédente"
-             <%= pagination.hasPreviousPage ? '' : 'aria-disabled="true" tabindex="-1"' %>>
-            <i class="fas fa-chevron-left"></i>
-            Précédent
-          </a>
-          <span class="pagination-current">
-            Page <strong><%= pagination.currentPage %></strong> / <strong><%= pagination.totalPages %></strong>
-          </span>
-          <a class="pagination-btn <%= pagination.hasNextPage ? '' : 'disabled' %>"
-             href="/dashboard?page=<%= pagination.nextPage %>&search=<%= encodeURIComponent(typeof search !== 'undefined' ? search : '') %>"
-             data-page="<%= pagination.nextPage %>"
-             aria-label="Page suivante"
-             <%= pagination.hasNextPage ? '' : 'aria-disabled="true" tabindex="-1"' %>>
-            Suivant
-            <i class="fas fa-chevron-right"></i>
-          </a>
-        </nav>
-      <% } %>
-    </div>
+    <div class="dashboard-pagination<%= pagination && pagination.totalPages <= 1 ? ' dashboard-pagination--single-page' : '' %>" id="dashboardPagination" aria-label="Pagination des rapports"></div>
+    <script type="application/json" id="dashboardInitialPagination"><%- JSON.stringify(pagination || {}) %></script>
   </section>
 
   <!-- Floating Action Button -->
@@ -228,5 +197,5 @@
 
 <%- include('partials/footer', {
   showScripts: true,
-  customScripts: ['/static/js/vehicleBrandLogos.js', '/static/js/dashboard.js']
+  customScripts: ['/static/js/vehicleBrandLogos.js', '/static/js/pagination-ui.js', '/static/js/dashboard.js']
 }) %>

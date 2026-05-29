@@ -6,7 +6,6 @@ const { getDatabase } = require('../config/database');
 const logger = require('../utils/logger');
 
 const DEFAULT_PAGE_SIZE = 10;
-const MAX_PAGE_SIZE = 50;
 
 const parsePositiveInteger = (value, fallback) => {
   const parsed = Number.parseInt(value, 10);
@@ -18,7 +17,10 @@ router.get('/', isAuthenticated, async (req, res) => {
     const { search } = req.query;
     const requestedPage = parsePositiveInteger(req.query.page, 1);
     const requestedPageSize = parsePositiveInteger(req.query.pageSize, DEFAULT_PAGE_SIZE);
-    const pageSize = Math.min(requestedPageSize, MAX_PAGE_SIZE);
+    const allowedPageSizes = [10, 25, 50];
+    const pageSize = allowedPageSizes.includes(requestedPageSize)
+      ? requestedPageSize
+      : DEFAULT_PAGE_SIZE;
     logger.debug(`Search query: ${search || ''}`);
     const db = getDatabase();
 

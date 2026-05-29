@@ -1194,6 +1194,10 @@ const initEventListeners = () => {
                 contentGrid.innerHTML = newContentGrid.innerHTML;
                 // Reinitialize event listeners
                 initEventListeners();
+                // Re-paginate the freshly rendered (filtered) tables
+                if (typeof window.initAdminPagination === 'function') {
+                  window.initAdminPagination();
+                }
               });
             }
             
