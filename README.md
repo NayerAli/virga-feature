@@ -42,6 +42,26 @@ This application is designed to streamline the process of creating and managing 
 
 5. Open your browser and navigate to `http://localhost:3000`
 
+## Docker (local development)
+
+Build and run the app with SQLite persistence and seeded test accounts:
+
+```bash
+docker compose up --build
+```
+
+- **URL:** http://localhost:3000
+- **Health check:** http://localhost:3000/health
+- **Env file:** `docker/local.env` (override port with `VIRGA_PORT=3001 docker compose up`)
+
+| Role | Username | Password |
+|------|----------|----------|
+| admin | `admin.local` | `Admin123!` |
+| secretary | `secretary.local` | `Secretary123!` |
+| mechanic | `mechanic.local` | `Mechanic123!` |
+
+Login uses **username** (not email). Admin and test users are created on first startup; data persists in Docker volumes `virga-db` and `virga-reports`. Reset with `docker compose down -v`.
+
 ## Usage
 
 1. Log in using the default credentials:

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { isAuthenticated } = require('../middleware/auth');
-const { isAdminUser } = require('../middleware/authorization');
+const { canViewAllReports } = require('../middleware/authorization');
 const { getDatabase } = require('../config/database');
 const logger = require('../utils/logger');
 
@@ -33,7 +33,7 @@ router.get('/', isAuthenticated, async (req, res) => {
     const whereConditions = [];
     const whereParams = [];
 
-    if (!isAdminUser(req.user)) {
+    if (!canViewAllReports(req.user)) {
       whereConditions.push('ir.created_by = ?');
       whereParams.push(req.user.id);
     }

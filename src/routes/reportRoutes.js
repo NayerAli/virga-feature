@@ -1,7 +1,7 @@
 ﻿const express = require('express');
 const router = express.Router();
 const { isAuthenticated } = require('../middleware/auth');
-const { requireReportAccess } = require('../middleware/authorization');
+const { canViewAllReports, requireReportAccess } = require('../middleware/authorization');
 const { getDatabase, getUserById } = require('../config/database');
 const { generatePDF } = require('../services/pdfGenerator');
 const fs = require('fs');
@@ -131,8 +131,7 @@ const canAccessReport = (report, user) => {
     return false;
   }
 
-  const userRole = String(user.role || '').toLowerCase();
-  if (userRole === 'admin') {
+  if (canViewAllReports(user)) {
     return true;
   }
 

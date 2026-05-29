@@ -5,6 +5,7 @@ jest.mock('../src/config/database', () => ({
 const { getDatabase } = require('../src/config/database');
 const {
   canAccessReport,
+  canViewAllReports,
   requireAdmin,
   requireReportAccess,
   requireSelfOrAdmin
@@ -25,10 +26,17 @@ describe('authorization middleware', () => {
     jest.clearAllMocks();
   });
 
-  test('canAccessReport allows admins and report owners only', () => {
+  test('canAccessReport allows admins, secretaries and report owners', () => {
     expect(canAccessReport({ id: 'admin-id', role: 'admin' }, { created_by: 'other-id' })).toBe(true);
+    expect(canAccessReport({ id: 'secretary-id', role: 'secretary' }, { created_by: 'other-id' })).toBe(true);
     expect(canAccessReport({ id: 'owner-id', role: 'mechanic' }, { created_by: 'owner-id' })).toBe(true);
     expect(canAccessReport({ id: 'user-id', role: 'mechanic' }, { created_by: 'other-id' })).toBe(false);
+  });
+
+  test('canViewAllReports allows admins and secretaries only', () => {
+    expect(canViewAllReports({ role: 'admin' })).toBe(true);
+    expect(canViewAllReports({ role: 'secretary' })).toBe(true);
+    expect(canViewAllReports({ role: 'mechanic' })).toBe(false);
   });
 
   test('requireAdmin denies non-admin users', () => {
@@ -108,6 +116,35 @@ describe('authorization middleware', () => {
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(403);
     expect(res.json).toHaveBeenCalledWith({ error: 'Accès interdit.' });
+  });
+
+  test('requireReportAccess allows secretaries for any report', async () => {
+    getDatabase.mockReturnValue({
+      get: (_query, _params, callback) => callback(null, {
+        report_id: 'report-id',
+        created_by: 'owner-id',
+        vehicule_id: 'vehicule-id'
+      })
+    });
+
+    const req = {
+      method: 'GET',
+      path: '/api-inspection-report/report-id',
+      params: { id: 'report-id' },
+      session: { user: { id: 'secretary-id', role: 'secretary' } },
+      user: { id: 'secretary-id', role: 'secretary' }
+    };
+    const res = createResponse();
+    const next = jest.fn();
+
+    await requireReportAccess('id', { responseType: 'json' })(req, res, next);
+
+    expect(req.reportAccess).toEqual({
+      report_id: 'report-id',
+      created_by: 'owner-id',
+      vehicule_id: 'vehicule-id'
+    });
+    expect(next).toHaveBeenCalled();
   });
 
   test('requireReportAccess allows the report owner', async () => {

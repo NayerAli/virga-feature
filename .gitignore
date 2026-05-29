@@ -1,5 +1,6 @@
 node_modules/
 *.env
+!docker/local.env
 *.log
 
 src/services/archive/
@@ -25,6 +26,9 @@ AGENTS.md
 
 # Variables d'environnement de test locales
 __tests__/.env.test
+
+# AI review artefacts (VIRGA)
+/codex-*.md
 
 # Artefacts debug agents (VIRGA)
 /cookies*.txt

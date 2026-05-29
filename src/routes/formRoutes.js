@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { isAuthenticated } = require('../middleware/auth');
 const {
+  canViewAllReports,
   requireReportAccess,
   requireSelfOrAdmin
 } = require('../middleware/authorization');
@@ -23,7 +24,7 @@ router.get('/api-vehicules', isAuthenticated, async (req, res) => {
   try {
     const db = getDatabase();
     const vehicules = await new Promise((resolve, reject) => {
-      const query = req.user.role === 'admin'
+      const query = canViewAllReports(req.user)
         ? 'SELECT * FROM Vehicules ORDER BY license_plate ASC'
         : `
           SELECT DISTINCT v.*
@@ -32,7 +33,7 @@ router.get('/api-vehicules', isAuthenticated, async (req, res) => {
           WHERE ir.created_by = ?
           ORDER BY v.license_plate ASC
         `;
-      const params = req.user.role === 'admin' ? [] : [req.user.id];
+      const params = canViewAllReports(req.user) ? [] : [req.user.id];
 
       db.all(query, params, (err, rows) => {
         if (err) {
@@ -80,7 +81,7 @@ router.get('/api-vehicule-details/:id', isAuthenticated, async (req, res) => {
       }
 
       const db = getDatabase();
-      if (req.user.role !== 'admin') {
+      if (!canViewAllReports(req.user)) {
         const authorizedVehicule = await new Promise((resolve, reject) => {
           db.get(`
             SELECT v.vehicule_id
@@ -177,7 +178,7 @@ router.get('/api-customers-search', isAuthenticated, async (req, res) => {
       });
     }
 
-    if (req.user.role === 'admin') {
+    if (canViewAllReports(req.user)) {
       const customers = await getAllCustomers();
       filteredCustomers = customers.filter(customer =>
         customer.name.toLowerCase().includes(searchQuery.toLowerCase())

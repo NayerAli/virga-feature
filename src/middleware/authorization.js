@@ -1,15 +1,19 @@
 const { getDatabase } = require('../config/database');
 
-const isAdminUser = (user) => Boolean(
-  user &&
-  typeof user.role === 'string' &&
-  user.role.toLowerCase() === 'admin'
+const getUserRole = (user) => (
+  user && typeof user.role === 'string' ? user.role.toLowerCase() : ''
 );
+
+const isAdminUser = (user) => getUserRole(user) === 'admin';
+
+const isSecretaryUser = (user) => getUserRole(user) === 'secretary';
+
+const canViewAllReports = (user) => isAdminUser(user) || isSecretaryUser(user);
 
 const canAccessReport = (user, report) => Boolean(
   user &&
   report &&
-  (isAdminUser(user) || report.created_by === user.id)
+  (canViewAllReports(user) || report.created_by === user.id)
 );
 
 const renderError = (req, res, statusCode, message) => (
@@ -103,7 +107,9 @@ const requireReportAccess = (paramOrResolver = 'id', options = {}) => async (req
 
 module.exports = {
   canAccessReport,
+  canViewAllReports,
   isAdminUser,
+  isSecretaryUser,
   requireAdmin,
   requireReportAccess,
   requireSelfOrAdmin

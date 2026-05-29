@@ -36,8 +36,8 @@ const initializeDatabase = () => {
       } else {
         logger.debug(`Connected to the database at ${dbPath}`);
         createTables()
-          // .then(() => temporaryDatabaseUpdate())
           .then(() => createDefaultAdminUser())
+          .then(() => createDefaultTestUsers())
           .then(() => seedInspectionItems())
           .then(resolve)
           .catch(reject);
@@ -269,6 +269,53 @@ const createDefaultAdminUser = async () => {
   } catch (error) {
     logger.error('Error checking if default admin user exists:', error);
     throw error;
+  }
+};
+
+const createDefaultTestUsers = async () => {
+  if (process.env.SEED_TEST_USERS !== 'true') {
+    return;
+  }
+
+  const usersToSeed = [
+    {
+      username: process.env.SECRETARY_USERNAME || 'secretary.local',
+      password: process.env.SECRETARY_PASSWORD || 'Secretary123!',
+      first_name: process.env.SECRETARY_FIRST_NAME || 'Marie',
+      last_name: process.env.SECRETARY_LAST_NAME || 'SECRETAIRE',
+      email: process.env.SECRETARY_EMAIL || 'secretary@local.dev',
+      role: 'secretary'
+    },
+    {
+      username: process.env.MECHANIC_USERNAME || 'mechanic.local',
+      password: process.env.MECHANIC_PASSWORD || 'Mechanic123!',
+      first_name: process.env.MECHANIC_FIRST_NAME || 'Jean',
+      last_name: process.env.MECHANIC_LAST_NAME || 'MECANICIEN',
+      email: process.env.MECHANIC_EMAIL || 'mechanic@local.dev',
+      role: 'mechanic'
+    }
+  ];
+
+  for (const userConfig of usersToSeed) {
+    try {
+      const existingUser = await getUserByUsername(userConfig.username);
+      if (existingUser) {
+        logger.debug(`Test user ${userConfig.username} already exists. Skipping creation.`);
+        continue;
+      }
+
+      await addUser(
+        userConfig.first_name,
+        userConfig.last_name,
+        userConfig.username,
+        userConfig.email,
+        userConfig.role,
+        userConfig.password
+      );
+      logger.info(`Created test user: ${userConfig.username} (${userConfig.role})`);
+    } catch (error) {
+      logger.error(`Error seeding test user ${userConfig.username}:`, error);
+    }
   }
 };
 
