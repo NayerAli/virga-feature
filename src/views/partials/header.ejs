@@ -55,7 +55,17 @@
 
             <div class="user-expanded-content">
               <div class="user-expanded-inner">
-                <% if (typeof user !== 'undefined' && user && user.username) { %>
+                <% if (typeof user !== 'undefined' && user && user.username) {
+                  var roleLabels = {
+                    admin: 'administrateur',
+                    secretary: 'secrétaire',
+                    mechanic: 'mécanicien',
+                    user: 'utilisateur'
+                  };
+                  var userTypeLabel = user.role
+                    ? (roleLabels[user.role.toLowerCase()] || user.role)
+                    : '';
+                %>
                   <div class="user-header">
                     <div class="user-avatar-large">
                       <i class="fas fa-user-circle" aria-hidden="true"></i>
@@ -63,6 +73,9 @@
                     <div class="user-details">
                       <p class="user-fullname"><%= user.first_name %> <%= user.last_name %></p>
                       <p class="user-role">@<%= user.username %></p>
+                      <% if (userTypeLabel) { %>
+                        <p class="user-type-label"><%= userTypeLabel %></p>
+                      <% } %>
                     </div>
                   </div>
                   <div class="divider"></div>

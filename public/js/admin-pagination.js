@@ -66,8 +66,24 @@
     const previous = card.querySelector(':scope > .admin-pagination');
     if (previous) previous.remove();
 
+    tbody.querySelectorAll('[data-admin-spacer]').forEach((row) => row.remove());
+
     const rows = Array.from(tbody.rows);
     rows.forEach((row) => { row.style.display = ''; });
+
+    scrollWrapper.classList.add('admin-table-viewport');
+    table.classList.add('admin-table');
+    const theadHeight = table.tHead?.offsetHeight || 33;
+    const rowHeight = rows[0]?.offsetHeight || 41;
+    scrollWrapper.style.setProperty('--admin-head-h', `${theadHeight}px`);
+    scrollWrapper.style.setProperty('--admin-row-h', `${rowHeight}px`);
+
+    const updateViewportSlots = (visibleCount) => {
+      const targetSlots = totalPages > 1
+        ? pageSize
+        : Math.min(pageSize, Math.max(total, DEFAULT_PAGE_SIZE));
+      scrollWrapper.style.setProperty('--admin-slots', String(targetSlots));
+    };
 
     const storageKey = getPageSizeStorageKey(table, tableIndex);
     let pageSize = readStoredPageSize(storageKey)
@@ -98,7 +114,7 @@
 
     const sizeLabel = document.createElement('span');
     sizeLabel.className = 'admin-pagination__size-label';
-    sizeLabel.textContent = 'Lignes par page';
+    sizeLabel.textContent = 'Par page';
 
     const sizeOptions = document.createElement('div');
     sizeOptions.className = 'admin-pagination__size-options';
@@ -168,7 +184,13 @@
     );
 
     navGroup.append(firstBtn, prevBtn, pageJump, numbers, nextBtn, lastBtn);
-    nav.append(left, navGroup);
+
+    const navSpacer = document.createElement('div');
+    navSpacer.className = 'admin-pagination__nav-spacer';
+    navSpacer.setAttribute('aria-hidden', 'true');
+    navSpacer.hidden = true;
+
+    nav.append(left, navGroup, navSpacer);
     card.appendChild(nav);
 
     let currentPage = 1;
@@ -206,6 +228,8 @@
         row.style.display = singlePage || (index >= startIndex && index < endIndex) ? '' : 'none';
       });
 
+      updateViewportSlots(endIndex - startIndex);
+
       if (singlePage) {
         range.innerHTML = `<strong>${total}</strong> ligne${total > 1 ? 's' : ''}`;
       } else {
@@ -219,6 +243,7 @@
         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
       });
 
+      navSpacer.hidden = !singlePage;
       navGroup.hidden = singlePage;
       if (singlePage) return;
 
