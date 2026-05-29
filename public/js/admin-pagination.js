@@ -73,17 +73,7 @@
 
     scrollWrapper.classList.add('admin-table-viewport');
     table.classList.add('admin-table');
-    const theadHeight = table.tHead?.offsetHeight || 33;
-    const rowHeight = rows[0]?.offsetHeight || 41;
-    scrollWrapper.style.setProperty('--admin-head-h', `${theadHeight}px`);
-    scrollWrapper.style.setProperty('--admin-row-h', `${rowHeight}px`);
-
-    const updateViewportSlots = (visibleCount) => {
-      const targetSlots = totalPages > 1
-        ? pageSize
-        : Math.min(pageSize, Math.max(total, DEFAULT_PAGE_SIZE));
-      scrollWrapper.style.setProperty('--admin-slots', String(targetSlots));
-    };
+    const rowHeight = rows.reduce((max, row) => Math.max(max, row.offsetHeight), 0);
 
     const storageKey = getPageSizeStorageKey(table, tableIndex);
     let pageSize = readStoredPageSize(storageKey)
@@ -97,6 +87,27 @@
     if (total === 0) return;
 
     let totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    const syncSpacerRows = (visibleCount) => {
+      tbody.querySelectorAll('[data-admin-spacer]').forEach((row) => row.remove());
+      if (totalPages <= 1) return;
+
+      const padCount = pageSize - visibleCount;
+      if (padCount <= 0) return;
+
+      const colCount = rows[0]?.cells.length || 1;
+      for (let i = 0; i < padCount; i++) {
+        const tr = document.createElement('tr');
+        tr.className = 'admin-table-spacer';
+        tr.setAttribute('data-admin-spacer', '');
+        tr.setAttribute('aria-hidden', 'true');
+        if (rowHeight > 0) tr.style.height = `${rowHeight}px`;
+        for (let c = 0; c < colCount; c++) {
+          tr.appendChild(document.createElement('td'));
+        }
+        tbody.appendChild(tr);
+      }
+    };
 
     const nav = document.createElement('nav');
     nav.className = 'admin-pagination';
@@ -228,7 +239,7 @@
         row.style.display = singlePage || (index >= startIndex && index < endIndex) ? '' : 'none';
       });
 
-      updateViewportSlots(endIndex - startIndex);
+      syncSpacerRows(endIndex - startIndex);
 
       if (singlePage) {
         range.innerHTML = `<strong>${total}</strong> ligne${total > 1 ? 's' : ''}`;

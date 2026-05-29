@@ -2927,13 +2927,9 @@ select#technicians option + option {
   flex-shrink: 0;
 }
 
-/* Zone tableau : hauteur stable, lignes à taille naturelle (pas d'étirement) */
+/* Zone tableau : scroll horizontal, hauteur naturelle (spacers JS si pagination) */
 .reports-section .admin-table-viewport {
-  --admin-slots: 10;
-  --admin-row-h: 2.5625rem;
-  --admin-head-h: 2.0625rem;
   flex: 0 0 auto;
-  min-height: calc(var(--admin-head-h) + (var(--admin-row-h) * var(--admin-slots)));
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -2956,6 +2952,34 @@ select#technicians option + option {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
   line-height: 1.25rem;
+}
+
+/* Lignes spacer : gardent la hauteur, sans séparateurs ni contenu visible */
+.reports-section tr.admin-table-spacer {
+  pointer-events: none;
+  /* divide-y sur tbody applique border-top sur les tr, pas les td */
+  border-top-width: 0 !important;
+  border-top: none !important;
+}
+
+.reports-section tbody.divide-y > tr.admin-table-spacer,
+.reports-section tbody.divide-y > tr:not(.admin-table-spacer) + tr.admin-table-spacer {
+  border-top-width: 0 !important;
+  border-top: none !important;
+}
+
+/* Dernière ligne de données avant les spacers : conserver le séparateur (divide-y le supprimait) */
+.reports-section tbody.divide-y > tr:not(.admin-table-spacer):has(+ tr.admin-table-spacer) > td {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.reports-section tr.admin-table-spacer td {
+  padding: 0;
+  border: 0 !important;
+  border-top-width: 0 !important;
+  background: transparent !important;
+  color: transparent;
+  user-select: none;
 }
 
 .reports-section .admin-table-actions {
