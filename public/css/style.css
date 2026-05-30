@@ -1059,7 +1059,8 @@ label i {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  padding: 0.5rem 1rem 0.5rem 2rem;
+  /* Extra left padding to keep text well clear of the loupe icon */
+  padding: 0.5rem 1rem 0.5rem 2.75rem;
   border: 1px solid #dee2e6;
   border-radius: 6px;
   font-size: 0.9rem;
@@ -2758,6 +2759,15 @@ select#technicians option + option {
   }
 }
 
+/* Inspection form — allow absolute dropdowns to overflow card boundaries */
+#inspection-form .card {
+  overflow: visible;
+}
+/* Restore rounded top corners on card headers now that overflow is visible */
+#inspection-form .card-header {
+  border-radius: 8px 8px 0 0;
+}
+
 /* Inspection form — feedback, touch targets, search */
 .form-page-feedback {
   margin-bottom: 1rem;
@@ -2795,13 +2805,33 @@ select#technicians option + option {
   min-height: 44px;
   display: flex;
   align-items: center;
-  padding: 0.25rem 0;
+  /* Keep Bootstrap 4's left padding so the ::before/::after indicator stays visible */
+  padding: 0.25rem 0 0.25rem 1.5rem;
 }
 
 .mechanic-fieldset .custom-control-label {
-  padding-top: 0.35rem;
-  padding-bottom: 0.35rem;
+  /* Natural text height; row alignment handled by .custom-control flex */
+  width: 100%;
+  min-height: 0;
+  display: block;
+  padding: 0;
+  margin: 0;
   cursor: pointer;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Checkbox indicator centered on label text, not on the 44px row */
+.mechanic-fieldset .custom-control-label::before,
+.mechanic-fieldset .custom-control-label::after {
+  top: 50%;
+  margin-top: 0;
+  transform: translateY(-50%);
+}
+
+.mechanic-fieldset .custom-checkbox .custom-control-label {
+  padding-top: 0;
 }
 
 .form-check-input {
@@ -2831,6 +2861,34 @@ select#technicians option + option {
   justify-content: center;
   padding: 0.5rem;
   margin: 0;
+  position: relative;
+}
+
+/* Vertical alignment only — keep Bootstrap default radio size */
+.radio-options .custom-radio .custom-control-label::before {
+  top: 50%;
+  margin-top: 0;
+  transform: translateY(-50%);
+}
+
+.radio-options .custom-radio .custom-control-label::after {
+  top: 50%;
+  margin-top: 0;
+  transform: translateY(-50%) scale(0);
+}
+
+.radio-options .custom-radio .custom-control-input:checked ~ .custom-control-label::after {
+  transform: translateY(-50%) scale(1);
+}
+
+.radio-options .custom-radio .custom-control-label {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.radio-options .custom-control.custom-radio.custom-control-inline {
+  align-items: center;
+  min-height: 44px;
 }
 
 .custom-control-input:focus ~ .inspection-option-label {
