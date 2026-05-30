@@ -1,9 +1,12 @@
+const path = require('path');
 const {
   getVehicleBrandKey,
   getVehicleBrandLogo,
   getVehicleBrandLogoPath,
   normalizeBrandName
 } = require('../src/utils/vehicleBrandLogos');
+
+const VEHICLE_BRAND_LOGO_DIR = path.join(__dirname, '../public/img/vehicle-brands');
 
 describe('vehicleBrandLogos', () => {
   test('normalizes brand names safely', () => {
@@ -26,7 +29,11 @@ describe('vehicleBrandLogos', () => {
   });
 
   test('returns a local existing logo path', () => {
-    expect(getVehicleBrandLogoPath('Renault')).toMatch(/public\/img\/vehicle-brands\/renault\.svg$/);
-    expect(getVehicleBrandLogoPath('../../etc/passwd')).toMatch(/public\/img\/vehicle-brands\/default\.svg$/);
+    expect(getVehicleBrandLogoPath('Renault')).toBe(
+      path.resolve(VEHICLE_BRAND_LOGO_DIR, 'renault.svg')
+    );
+    expect(getVehicleBrandLogoPath('../../etc/passwd')).toBe(
+      path.resolve(VEHICLE_BRAND_LOGO_DIR, 'default.svg')
+    );
   });
 });

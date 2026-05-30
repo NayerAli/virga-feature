@@ -93,35 +93,35 @@ describe('Dashboard pagination', () => {
 
   test('returns the first page with total count and next-page metadata', async () => {
     const response = await request(app)
-      .get('/dashboard?search=Client%20Pagination&page=1&pageSize=5')
+      .get('/dashboard?search=Client%20Pagination&page=1&pageSize=10')
       .set('X-Requested-With', 'XMLHttpRequest');
 
     expect(response.statusCode).toBe(200);
-    expect(response.body.reports).toHaveLength(5);
+    expect(response.body.reports).toHaveLength(10);
     expect(response.body.pagination).toEqual(expect.objectContaining({
       currentPage: 1,
-      pageSize: 5,
+      pageSize: 10,
       totalReports: 12,
-      totalPages: 3,
+      totalPages: 2,
       hasPreviousPage: false,
       hasNextPage: true,
       startItem: 1,
-      endItem: 5
+      endItem: 10
     }));
   });
 
   test('clamps an out-of-range page to the last page', async () => {
     const response = await request(app)
-      .get('/dashboard?search=Client%20Pagination&page=999&pageSize=5')
+      .get('/dashboard?search=Client%20Pagination&page=999&pageSize=10')
       .set('X-Requested-With', 'XMLHttpRequest');
 
     expect(response.statusCode).toBe(200);
     expect(response.body.reports).toHaveLength(2);
     expect(response.body.pagination).toEqual(expect.objectContaining({
-      currentPage: 3,
-      pageSize: 5,
+      currentPage: 2,
+      pageSize: 10,
       totalReports: 12,
-      totalPages: 3,
+      totalPages: 2,
       hasPreviousPage: true,
       hasNextPage: false,
       startItem: 11,
@@ -131,7 +131,7 @@ describe('Dashboard pagination', () => {
 
   test('keeps normalized license plate search compatible with pagination', async () => {
     const response = await request(app)
-      .get('/dashboard?search=PG005AB&page=1&pageSize=5')
+      .get('/dashboard?search=PG005AB&page=1&pageSize=10')
       .set('X-Requested-With', 'XMLHttpRequest');
 
     expect(response.statusCode).toBe(200);
@@ -139,11 +139,21 @@ describe('Dashboard pagination', () => {
     expect(response.body.reports[0].license_plate).toBe('PG-005-AB');
     expect(response.body.pagination).toEqual(expect.objectContaining({
       currentPage: 1,
-      pageSize: 5,
+      pageSize: 10,
       totalReports: 1,
       totalPages: 1,
       startItem: 1,
       endItem: 1
     }));
+  });
+
+  test('falls back to the default page size for unsupported values', async () => {
+    const response = await request(app)
+      .get('/dashboard?search=Client%20Pagination&page=1&pageSize=15')
+      .set('X-Requested-With', 'XMLHttpRequest');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.reports).toHaveLength(10);
+    expect(response.body.pagination.pageSize).toBe(10);
   });
 });

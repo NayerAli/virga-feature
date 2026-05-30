@@ -85,8 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return window.VirgaVehicleBrandLogos.getVehicleBrandLogo(brand);
   };
 
-  const normalizeLicensePlateSearch = (value) => String(value || '').replace(/[\s-]/g, '').toLowerCase();
-
   const escapeHtml = (value) => {
     const div = document.createElement('div');
     div.textContent = value || '';
@@ -247,9 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const handleSearch = async (page = 1) => {
     const searchValue = searchInput.value.trim();
-    const normalizedPlateSearch = normalizeLicensePlateSearch(searchValue);
     try {
-      const response = await fetch(`/dashboard?search=${encodeURIComponent(searchValue)}&plateSearch=${encodeURIComponent(normalizedPlateSearch)}&page=${encodeURIComponent(page)}&pageSize=${pageSize}`, {
+      const response = await fetch(`/dashboard?search=${encodeURIComponent(searchValue)}&page=${encodeURIComponent(page)}&pageSize=${pageSize}`, {
         headers: {
           'X-Requested-With': 'XMLHttpRequest'
         }
@@ -312,9 +309,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const initialPagination = readInitialPagination();
+  const initialSearchValue = searchInput.value.trim();
   if (initialPagination && initialPagination.pageSize && initialPagination.pageSize !== pageSize) {
     handleSearch(currentPage);
   } else if (initialPagination) {
+    currentPage = initialPagination.currentPage;
     renderPagination(initialPagination);
+    const urlPage = Number.parseInt(urlParams.searchParams.get('page'), 10) || 1;
+    if (urlPage !== currentPage) {
+      updateBrowserUrl(initialSearchValue, currentPage);
+    }
   }
 });
