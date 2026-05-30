@@ -104,10 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
   searchInput.value = urlParams.searchParams.get('search') || '';
   currentPage = Number.parseInt(urlParams.searchParams.get('page'), 10) || 1;
 
-  const scrollToReportsSection = () => {
-    document.querySelector('.reports-section')?.scrollIntoView({ block: 'start' });
-  };
-
   const renderPagination = (pagination) => {
     if (!paginationContainer || !paginationUi) return;
 
@@ -249,8 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState({}, '', nextUrl);
   };
 
-  const handleSearch = async (page = 1, options = {}) => {
-    const { scrollToTop = false } = options;
+  const handleSearch = async (page = 1) => {
     const searchValue = searchInput.value.trim();
     const normalizedPlateSearch = normalizeLicensePlateSearch(searchValue);
     try {
@@ -264,7 +259,6 @@ document.addEventListener('DOMContentLoaded', () => {
       updateTable(data.reports || [], searchValue);
       renderPagination(data.pagination);
       updateBrowserUrl(searchValue, currentPage);
-      if (scrollToTop) scrollToReportsSection();
     } catch (error) {
       console.error('Search error:', error);
       showDashboardFeedback('Erreur lors de la recherche. Réessayez.', 'error');
@@ -284,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!paginationUi.PAGE_SIZE_OPTIONS.includes(nextSize) || nextSize === pageSize) return;
         pageSize = nextSize;
         paginationUi.writeStoredPageSize(PAGE_SIZE_STORAGE_KEY, pageSize);
-        handleSearch(1, { scrollToTop: true });
+        handleSearch(1);
         return;
       }
 
@@ -294,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const requestedPage = Number.parseInt(button.dataset.page, 10);
       if (Number.isNaN(requestedPage)) return;
-      handleSearch(requestedPage, { scrollToTop: true });
+      handleSearch(requestedPage);
     });
 
     paginationContainer.addEventListener('keydown', (event) => {
@@ -304,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
       event.preventDefault();
       const requestedPage = Number.parseInt(input.value, 10);
       if (Number.isNaN(requestedPage)) return;
-      handleSearch(requestedPage, { scrollToTop: true });
+      handleSearch(requestedPage);
       input.blur();
     });
 
@@ -313,13 +307,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!input) return;
       const requestedPage = Number.parseInt(input.value, 10);
       if (Number.isNaN(requestedPage)) return;
-      handleSearch(requestedPage, { scrollToTop: true });
+      handleSearch(requestedPage);
     });
   }
 
   const initialPagination = readInitialPagination();
   if (initialPagination && initialPagination.pageSize && initialPagination.pageSize !== pageSize) {
-    handleSearch(currentPage, { scrollToTop: false });
+    handleSearch(currentPage);
   } else if (initialPagination) {
     renderPagination(initialPagination);
   }

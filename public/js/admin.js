@@ -1,6 +1,7 @@
 // File: public/js/admin.js
 
 var searchTimeout;
+var isModalOpen = false;
 
 const escapeHtml = (value) => {
   const div = document.createElement('div');
@@ -9,6 +10,25 @@ const escapeHtml = (value) => {
 };
 
 const escapeAttribute = (value) => escapeHtml(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+const ADMIN_ENTITY_PATHS = {
+  user: 'users',
+  customer: 'customers',
+  vehicule: 'vehicules',
+  inspectionItem: 'inspectionItems'
+};
+
+const getAdminEntityPath = (type) => ADMIN_ENTITY_PATHS[type] || `${type}s`;
+
+const adminJsonFetch = (url, options = {}) => fetch(url, {
+  ...options,
+  headers: {
+    Accept: 'application/json',
+    ...(options.headers || {})
+  }
+});
+
+const getAdminDataStack = () => document.querySelector('.reports-section .admin-data-stack');
 
 // Input formatting configurations
 const inputsToFormat = [
@@ -333,9 +353,9 @@ const openModal = (type, id = null) => {
 
   const modalContainer = document.getElementById('modalContainer');
   const modal = document.getElementById(`${type}Modal`);
-  isModalOpen = true;
+  if (!modalContainer || !modal) return;
 
-  if(isModalOpen) {
+  if (isModalOpen) {
     closeModal();
   }
     
@@ -375,6 +395,7 @@ const openModal = (type, id = null) => {
     
   modalContainer.classList.remove('hidden');
   modal.classList.remove('hidden');
+  isModalOpen = true;
 
   if(type === 'user') {
     document.getElementById('is_active').checked = true;
@@ -400,13 +421,25 @@ const closeModal = () => {
 // Fetch entity data for editing
 const fetchEntityData = async (type, id) => {
   try {
-    const response = await fetch(`/admin/${type}s/${id}`);
-    if (!response.ok) throw new Error('Failed to fetch data');
-    
+    const response = await adminJsonFetch(`/admin/${getAdminEntityPath(type)}/${id}`);
+    if (!response.ok) {
+      let message = 'Impossible de charger les données.';
+      try {
+        const payload = await response.json();
+        if (payload.error) message = payload.error;
+      } catch {
+        // Réponse non JSON (ex. page HTML d'erreur).
+      }
+      throw new Error(message);
+    }
+
     const data = await response.json();
     
     if (type === 'user') {
       const user = data.user;
+      if (!user) {
+        throw new Error('Utilisateur introuvable.');
+      }
       user.username = user.is_active === 0 ? user.username.replace(/ \(Désactivé\)$/, '') : user.username;
 
       // Store original data for comparison
@@ -436,6 +469,9 @@ const fetchEntityData = async (type, id) => {
 
     if (type === 'customer') {
       const customer = data.customer;
+      if (!customer) {
+        throw new Error('Client introuvable.');
+      }
       document.getElementById('customerId').value = customer.customer_id;
       document.getElementById('customerName').value = customer.name;
       document.getElementById('customerPhone').value = customer.phone || '';
@@ -452,6 +488,9 @@ const fetchEntityData = async (type, id) => {
 
     if (type === 'vehicule') {
       const vehicule = data.vehicule;
+      if (!vehicule) {
+        throw new Error('Véhicule introuvable.');
+      }
       document.getElementById('vehicule_customer_id').value = vehicule.customer_id;
       selectCustomerFromID(vehicule.customer_id);
 
@@ -614,7 +653,7 @@ const handleSubmit = async (event, type) => {
     // Submit the form
     if (window.__VIRGA_DEBUG__) console.log('Submitting data:', data);
     
-    const response = await fetch(`/admin/${type}s${id ? `/${id}` : ''}`, {
+    const response = await adminJsonFetch(`/admin/${getAdminEntityPath(type)}${id ? `/${id}` : ''}`, {
       method: id ? 'PUT' : 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -642,7 +681,7 @@ const deleteEntity = async (type, id) => {
   if (!confirm('Êtes vous sur de vouloir supprimer cet élément ?')) return;
   
   try {
-    const response = await fetch(`/admin/${type}s/${id}`, {
+    const response = await adminJsonFetch(`/admin/${getAdminEntityPath(type)}/${id}`, {
       method: 'DELETE'
     });
     
@@ -661,7 +700,7 @@ const deleteEntity = async (type, id) => {
 // Deactivate entity
 const deactivateUser = async (userId) => {
   try {
-    const response = await fetch(`/admin/users/${userId}`, 
+    const response = await adminJsonFetch(`/admin/users/${userId}`,
       { method: 'PUT', 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: 0 }) 
@@ -829,7 +868,7 @@ const handleCustomerSearch = async (searchTerm) => {
 const selectCustomerFromID = async (customerId) => {
   if (!customerId) throw new Error('Customer ID is required');
 
-  const response = await fetch(`/admin/customers/${customerId}`);
+  const response = await adminJsonFetch(`/admin/customers/${customerId}`);
   if (!response.ok) throw new Error('Search failed');
     
   const data = await response.json();
@@ -1013,6 +1052,67 @@ const handleDatabaseBackup = async () => {
 };
 
 // Initialize Event Listeners
+const bindAdminTableActions = () => {
+  if (document.body.dataset.adminTableActionsBound === 'true') return;
+
+  document.body.dataset.adminTableActionsBound = 'true';
+  document.addEventListener('click', (event) => {
+    const editUserBtn = event.target.closest('.edit-user-btn');
+    if (editUserBtn) {
+      openModal('user', editUserBtn.getAttribute('data-id'));
+      initUsernameField();
+      return;
+    }
+
+    const deactivateUserBtn = event.target.closest('.deactivate-user-btn');
+    if (deactivateUserBtn) {
+      deactivateUser(deactivateUserBtn.getAttribute('data-id'));
+      return;
+    }
+
+    const deleteUserBtn = event.target.closest('.delete-user-btn');
+    if (deleteUserBtn) {
+      deleteEntity('user', deleteUserBtn.getAttribute('data-id'));
+      return;
+    }
+
+    const editCustomerBtn = event.target.closest('.edit-customer-btn');
+    if (editCustomerBtn) {
+      openModal('customer', editCustomerBtn.getAttribute('data-id'));
+      return;
+    }
+
+    const deleteCustomerBtn = event.target.closest('.delete-customer-btn');
+    if (deleteCustomerBtn) {
+      deleteEntity('customer', deleteCustomerBtn.getAttribute('data-id'));
+      return;
+    }
+
+    const editVehicleBtn = event.target.closest('.edit-vehicule-btn');
+    if (editVehicleBtn) {
+      openModal('vehicule', editVehicleBtn.getAttribute('data-id'));
+      return;
+    }
+
+    const deleteVehicleBtn = event.target.closest('.delete-vehicule-btn');
+    if (deleteVehicleBtn) {
+      deleteEntity('vehicule', deleteVehicleBtn.getAttribute('data-id'));
+      return;
+    }
+
+    const editInspectionItemBtn = event.target.closest('.edit-inspection-item-btn');
+    if (editInspectionItemBtn) {
+      openModal('inspectionItem', editInspectionItemBtn.getAttribute('data-id'));
+      return;
+    }
+
+    const deleteInspectionItemBtn = event.target.closest('.delete-inspection-item-btn');
+    if (deleteInspectionItemBtn) {
+      deleteEntity('inspectionItem', deleteInspectionItemBtn.getAttribute('data-id'));
+    }
+  });
+};
+
 const initEventListeners = () => {
   // Add input formatting listeners
   inputsToFormat.forEach(({input, type}) => {
@@ -1146,7 +1246,8 @@ const initEventListeners = () => {
   const searchInput = document.getElementById('searchTerm');
   const clearSearchBtn = document.getElementById('clearSearch');
   
-  if (searchInput) {
+  if (searchInput && searchInput.dataset.searchBound !== 'true') {
+    searchInput.dataset.searchBound = 'true';
     let debounceTimeout;
     let lastSearchTerm = '';
 
@@ -1185,16 +1286,13 @@ const initEventListeners = () => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             
-            const contentGrid = document.querySelector('.grid.grid-cols-1.gap-6');
-            const newContentGrid = doc.querySelector('.grid.grid-cols-1.gap-6');
+            const contentStack = getAdminDataStack();
+            const newContentStack = doc.querySelector('.reports-section .admin-data-stack');
             
-            if (contentGrid && newContentGrid) {
+            if (contentStack && newContentStack) {
               // Use requestAnimationFrame for smooth DOM updates
               requestAnimationFrame(() => {
-                contentGrid.innerHTML = newContentGrid.innerHTML;
-                // Reinitialize event listeners
-                initEventListeners();
-                // Re-paginate the freshly rendered (filtered) tables
+                contentStack.innerHTML = newContentStack.innerHTML;
                 if (typeof window.initAdminPagination === 'function') {
                   window.initAdminPagination();
                 }
@@ -1230,106 +1328,40 @@ const initEventListeners = () => {
     lastNameInput.addEventListener('input', generateUsername);
   }
 
+  bindAdminTableActions();
+
   // User Management
   const newUserBtn = document.getElementById('new-user-btn');
-  if (newUserBtn) {
+  if (newUserBtn && !newUserBtn.dataset.clickBound) {
+    newUserBtn.dataset.clickBound = 'true';
     newUserBtn.addEventListener('click', () => openModal('user'));
   }
-
-  const editUserButtons = document.querySelectorAll('.edit-user-btn');
-  editUserButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const userId = button.getAttribute('data-id');
-      openModal('user', userId);
-      initUsernameField();
-    });
-  });
-
-  const deactivateUserButtons = document.querySelectorAll('.deactivate-user-btn');
-  deactivateUserButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const userId = button.getAttribute('data-id');
-      deactivateUser(userId);
-    });
-  });
-
-  const deleteUserButtons = document.querySelectorAll('.delete-user-btn');
-  deleteUserButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const userId = button.getAttribute('data-id');
-      deleteEntity('user', userId);
-    });
-  });
 
   // Customer Management
   const newCustomerBtn = document.getElementsByName('new-customer-btn');
   if (newCustomerBtn) {
     newCustomerBtn.forEach(button => {
+      if (button.dataset.clickBound === 'true') return;
+      button.dataset.clickBound = 'true';
       button.addEventListener('click', () => {
         openModal('customer');
       });
     });
   }
 
-  document.addEventListener('click', (e) => {
-    const editCustomerBtn = e.target.closest('.edit-customer-btn');
-    if (editCustomerBtn) {
-      const customerId = editCustomerBtn.getAttribute('data-id');
-      openModal('customer', customerId);
-    }
-  });
-
-  const deleteCustomerButtons = document.querySelectorAll('.delete-customer-btn');
-  deleteCustomerButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const customerId = button.getAttribute('data-id');
-      deleteEntity('customer', customerId);
-    });
-  });
-
   // Vehicule Management
   const newVehicleBtn = document.getElementById('new-vehicule-btn');
-  if (newVehicleBtn) {
+  if (newVehicleBtn && !newVehicleBtn.dataset.clickBound) {
+    newVehicleBtn.dataset.clickBound = 'true';
     newVehicleBtn.addEventListener('click', () => openModal('vehicule'));
   }
 
-  const editVehicleButtons = document.querySelectorAll('.edit-vehicule-btn');
-  editVehicleButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const vehicleId = button.getAttribute('data-id');
-      openModal('vehicule', vehicleId);
-    });
-  });
-
-  const deleteVehicleButtons = document.querySelectorAll('.delete-vehicule-btn');
-  deleteVehicleButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const vehicleId = button.getAttribute('data-id');
-      deleteEntity('vehicule', vehicleId);
-    });
-  });
-
   // Inspection Items
   const newInspectionItemBtn = document.getElementById('new-inspection-item-btn');
-  if (newInspectionItemBtn) {
+  if (newInspectionItemBtn && !newInspectionItemBtn.dataset.clickBound) {
+    newInspectionItemBtn.dataset.clickBound = 'true';
     newInspectionItemBtn.addEventListener('click', () => openModal('inspectionItem'));
   }
-
-  const editInspectionItemButtons = document.querySelectorAll('.edit-inspection-item-btn');
-  editInspectionItemButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const itemId = button.getAttribute('data-id');
-      openModal('inspectionItem', itemId);
-    });
-  });
-
-  const deleteInspectionItemButtons = document.querySelectorAll('.delete-inspection-item-btn');
-  deleteInspectionItemButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const itemId = button.getAttribute('data-id');
-      deleteEntity('inspectionItem', itemId);
-    });
-  });
 
   // Form Submissions - Single handlers
   const forms = {
@@ -1560,8 +1592,8 @@ document.addEventListener('click', (e) => {
 const handleViewCustomerCars = async (customerId) => {
     
   try {
-    const response = await fetch(`/admin/customers/${customerId}/cars-reports`);
-    if (!response.ok) throw new Error('Failed to fetch data');
+    const response = await adminJsonFetch(`/admin/customers/${customerId}/cars-reports`);
+    if (!response.ok) throw new Error('Impossible de charger les véhicules et rapports');
     
     const data = await response.json();
     

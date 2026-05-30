@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { isAuthenticated } = require('../middleware/auth');
 const {
-  canViewAllReports,
   requireReportAccess,
   requireSelfOrAdmin
 } = require('../middleware/authorization');
@@ -24,18 +23,7 @@ router.get('/api-vehicules', isAuthenticated, async (req, res) => {
   try {
     const db = getDatabase();
     const vehicules = await new Promise((resolve, reject) => {
-      const query = canViewAllReports(req.user)
-        ? 'SELECT * FROM Vehicules ORDER BY license_plate ASC'
-        : `
-          SELECT DISTINCT v.*
-          FROM Vehicules v
-          INNER JOIN InspectionReports ir ON ir.vehicule_id = v.vehicule_id
-          WHERE ir.created_by = ?
-          ORDER BY v.license_plate ASC
-        `;
-      const params = canViewAllReports(req.user) ? [] : [req.user.id];
-
-      db.all(query, params, (err, rows) => {
+      db.all('SELECT * FROM Vehicules ORDER BY license_plate ASC', [], (err, rows) => {
         if (err) {
           reject(err);
           return;
@@ -78,33 +66,6 @@ router.get('/api-vehicule-details/:id', isAuthenticated, async (req, res) => {
           success: false,
           message: 'Véhicule introuvable'
         });
-      }
-
-      const db = getDatabase();
-      if (!canViewAllReports(req.user)) {
-        const authorizedVehicule = await new Promise((resolve, reject) => {
-          db.get(`
-            SELECT v.vehicule_id
-            FROM Vehicules v
-            INNER JOIN InspectionReports ir ON ir.vehicule_id = v.vehicule_id
-            WHERE v.vehicule_id = ? AND ir.created_by = ?
-            LIMIT 1
-          `, [vehicule_id, req.user.id], (err, row) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-
-            resolve(row || null);
-          });
-        });
-
-        if (!authorizedVehicule) {
-          return res.status(403).json({
-            success: false,
-            message: 'Accès interdit.'
-          });
-        }
       }
 
       const users = await getAllActiveUsers();
@@ -168,7 +129,6 @@ router.get('/api-user-details/:id', isAuthenticated, requireSelfOrAdmin('id', { 
 router.get('/api-customers-search', isAuthenticated, async (req, res) => {
   try {
     const searchQuery = (req.query.query || '').trim();
-    const db = getDatabase();
     let filteredCustomers = [];
 
     if (!searchQuery) {
@@ -178,31 +138,10 @@ router.get('/api-customers-search', isAuthenticated, async (req, res) => {
       });
     }
 
-    if (canViewAllReports(req.user)) {
-      const customers = await getAllCustomers();
-      filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    } else {
-      filteredCustomers = await new Promise((resolve, reject) => {
-        db.all(`
-          SELECT DISTINCT c.*
-          FROM Customers c
-          INNER JOIN Vehicules v ON v.customer_id = c.customer_id
-          INNER JOIN InspectionReports ir ON ir.vehicule_id = v.vehicule_id
-          WHERE ir.created_by = ?
-            AND LOWER(c.name) LIKE LOWER(?)
-          ORDER BY c.name ASC
-        `, [req.user.id, `%${searchQuery}%`], (err, rows) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-
-          resolve(rows || []);
-        });
-      });
-    }
+    const customers = await getAllCustomers();
+    filteredCustomers = customers.filter(customer =>
+      customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const formattedCustomers = filteredCustomers.map(customer => ({
       customer_id: customer.customer_id,

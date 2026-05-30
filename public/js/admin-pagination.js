@@ -107,18 +107,11 @@
     footer.append(left, navMount);
     card.appendChild(footer);
 
-    const scrollToTableStart = () => {
-      const anchor = card.querySelector('.admin-table-card__header') || scrollWrapper || card;
-      anchor.scrollIntoView({ block: 'start', behavior: 'auto' });
-      if (scrollWrapper.scrollLeft) scrollWrapper.scrollLeft = 0;
-    };
-
     const goToPage = (page) => {
       const nextPage = Math.min(Math.max(1, page), totalPages);
       if (nextPage === currentPage) return;
       currentPage = nextPage;
       render();
-      requestAnimationFrame(scrollToTableStart);
     };
 
     const renderNav = (singlePage) => {
@@ -228,7 +221,6 @@
         writeStoredPageSize(storageKey, pageSize);
         currentPage = 1;
         render();
-        requestAnimationFrame(scrollToTableStart);
       });
     });
 
