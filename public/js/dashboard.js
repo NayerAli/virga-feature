@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const requestedPage = Number.parseInt(button.dataset.page, 10);
       if (Number.isNaN(requestedPage)) return;
-      handleSearch(requestedPage);
+      handleSearch(requestedPage, { scrollToTop: true });
     });
 
     paginationContainer.addEventListener('keydown', (event) => {
@@ -304,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
       event.preventDefault();
       const requestedPage = Number.parseInt(input.value, 10);
       if (Number.isNaN(requestedPage)) return;
-      handleSearch(requestedPage);
+      handleSearch(requestedPage, { scrollToTop: true });
       input.blur();
     });
 
@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!input) return;
       const requestedPage = Number.parseInt(input.value, 10);
       if (Number.isNaN(requestedPage)) return;
-      handleSearch(requestedPage);
+      handleSearch(requestedPage, { scrollToTop: true });
     });
   }
 

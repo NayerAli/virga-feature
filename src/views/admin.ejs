@@ -42,9 +42,8 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6">
+    <div class="admin-data-stack">
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 admin-pair-grid">
         <!-- Users Table -->
         <div class="bg-white border rounded-lg admin-table-card">
           <div class="p-3 border-b flex justify-between items-center admin-table-card__header">
@@ -151,7 +150,7 @@
                       <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900"><%= customer.phone %></td>
                       <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900"><%= customer.address %></td>
                       <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 sticky right-0 bg-white z-10">
-                        <div class="flex gap-2">
+                        <div class="admin-table-actions flex gap-2">
                           <button type="button" class="edit-customer-btn px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400" 
                             data-id="<%= customer.customer_id %>" aria-label="Modifier" tabindex="0">
                             <i class="fas fa-edit"></i>
@@ -178,7 +177,6 @@
             <% } %>
           </div>
         </div>
-      </div>
 
       <!-- Inspection Reports Table -->
       <div class="bg-white border rounded-lg admin-table-card">
@@ -744,5 +742,5 @@
 
 <%- include('partials/footer', {
   showScripts: true,
-  customScripts: ['/static/js/admin.js', '/static/js/admin-pagination.js']
+  customScripts: ['/static/js/pagination-ui.js', '/static/js/admin.js', '/static/js/admin-pagination.js']
 }) %>
