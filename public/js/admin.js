@@ -1704,13 +1704,13 @@ const generateReportsList = (reports) => {
               </div>
             </div>
             <div class="flex gap-2 md:gap-3 justify-end">
-              <a href="/report/${report.report_id}?fresh=${Date.now()}" target="_blank"
+              <a href="/report/${report.report_id}" target="_blank"
                  class="flex-1 md:flex-none px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition-colors duration-200 text-center"
                  aria-label="Voir le rapport">
                 <i class="fas fa-eye"></i>
                 <span class="m-1 md:hidden">Afficher</span>
               </a>
-              <a href="/report/preview/${report.report_id}?fresh=${Date.now()}" target="_blank"
+              <a href="/report/preview/${report.report_id}" target="_blank"
                  class="flex-1 md:flex-none px-3 py-1.5 text-sm bg-green-500 text-white rounded hover:bg-green-600 focus:ring-2 focus:ring-green-400 transition-colors duration-200 text-center"
                  aria-label="Télécharger le PDF">
                 <i class="fas fa-file-pdf"></i>

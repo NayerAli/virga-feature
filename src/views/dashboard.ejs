@@ -105,7 +105,7 @@
                        aria-label="Voir le rapport">
                       <i class="fas fa-eye" aria-hidden="true"></i>
                     </a>
-                    <a href="/report/preview/<%= report.report_id %>?fresh=<%= Date.now() %>"
+                    <a href="/report/preview/<%= report.report_id %>"
                        class="action-btn preview"
                        title="Prévisualiser le PDF"
                        aria-label="Prévisualiser le PDF"
@@ -113,7 +113,7 @@
                        rel="noopener noreferrer">
                       <i class="fas fa-file-pdf" aria-hidden="true"></i>
                     </a>
-                    <a href="/report/download/<%= report.report_id %>?fresh=<%= Date.now() %>"
+                    <a href="/report/download/<%= report.report_id %>"
                        class="action-btn download"
                        title="Télécharger le PDF"
                        aria-label="Télécharger le PDF">

@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
                aria-label="Voir le rapport">
               <i class="fas fa-eye" aria-hidden="true"></i>
             </a>
-            <a href="/report/preview/${safeReportId}?fresh=${Date.now()}"
+            <a href="/report/preview/${safeReportId}"
                class="action-btn preview"
                title="Prévisualiser le PDF"
                aria-label="Prévisualiser le PDF"
@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
                rel="noopener noreferrer">
               <i class="fas fa-file-pdf" aria-hidden="true"></i>
             </a>
-            <a href="/report/download/${safeReportId}?fresh=${Date.now()}"
+            <a href="/report/download/${safeReportId}"
                class="action-btn download"
                title="Télécharger le PDF"
                aria-label="Télécharger le PDF">
