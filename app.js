@@ -77,6 +77,17 @@ if (!fs.existsSync(sessionDir)) {
 
 const app = express();
 
+const packageJson = require('./package.json');
+const assetVersion = process.env.APP_VERSION || packageJson.version || 'dev';
+
+const staticAsset = (urlPath) => {
+  const separator = urlPath.includes('?') ? '&' : '?';
+  return `${urlPath}${separator}v=${encodeURIComponent(assetVersion)}`;
+};
+
+app.locals.assetVersion = assetVersion;
+app.locals.staticAsset = staticAsset;
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: {
@@ -105,6 +116,11 @@ app.use('/static', express.static(path.join(__dirname, 'public'), {
       res.setHeader('Expires', '0');
       res.setHeader('Surrogate-Control', 'no-store');
       res.setHeader('X-Accel-Expires', '0');
+      return;
+    }
+
+    if (/\.(?:css|js)$/.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     }
   }
 }));

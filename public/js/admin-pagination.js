@@ -86,11 +86,18 @@
     sizeOptions.className = 'dashboard-page-size-options';
     sizeOptions.setAttribute('role', 'group');
     sizeOptions.setAttribute('aria-label', 'Nombre de lignes par page');
+    // Tailwind (admin CDN) can reset button layout; keep controls separated if style.css is stale.
+    sizeOptions.style.display = 'inline-flex';
+    sizeOptions.style.alignItems = 'center';
+    sizeOptions.style.gap = '2px';
 
     const sizeButtons = PAGE_SIZE_OPTIONS.map((optionValue) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'pagination-size-btn';
+      button.style.display = 'inline-flex';
+      button.style.alignItems = 'center';
+      button.style.justifyContent = 'center';
       button.dataset.pageSize = String(optionValue);
       button.textContent = String(optionValue);
       button.setAttribute('aria-label', `${optionValue} lignes par page`);

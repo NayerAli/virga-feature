@@ -1220,7 +1220,8 @@ label i {
   white-space: nowrap;
 }
 
-.dashboard-page-size-options {
+.dashboard-page-size-options,
+.admin-pagination__size-options {
   display: inline-flex;
   align-items: center;
   gap: 0.125rem;
@@ -1230,7 +1231,8 @@ label i {
   border-radius: 6px;
 }
 
-.pagination-size-btn {
+.pagination-size-btn,
+.admin-pagination__size-option {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1247,17 +1249,20 @@ label i {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.pagination-size-btn:hover:not(.is-active) {
+.pagination-size-btn:hover:not(.is-active),
+.admin-pagination__size-option:hover:not(.is-active) {
   background: #f8f9fa;
   color: #2c3e50;
 }
 
-.pagination-size-btn:focus-visible {
+.pagination-size-btn:focus-visible,
+.admin-pagination__size-option:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.45);
 }
 
-.pagination-size-btn.is-active {
+.pagination-size-btn.is-active,
+.admin-pagination__size-option.is-active {
   background: #1976d2;
   color: #fff;
 }
@@ -3155,4 +3160,58 @@ select#technicians option + option {
   .reports-section .admin-table-card__footer .dashboard-page-input {
     height: 2.25rem;
   }
+}
+
+/* Admin : priorité sur le preflight Tailwind (boutons 10/25/50 et navigation) */
+.reports-section .dashboard-pagination .dashboard-page-size-options {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+}
+
+.reports-section .dashboard-pagination .dashboard-page-size-options > button.pagination-size-btn,
+.reports-section .dashboard-pagination .dashboard-page-size-options > button.admin-pagination__size-option {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 2rem;
+  min-height: 1.75rem;
+  padding: 0 0.4375rem !important;
+  margin: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #6c757d;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.reports-section .dashboard-pagination .dashboard-page-size-options > button.pagination-size-btn.is-active,
+.reports-section .dashboard-pagination .dashboard-page-size-options > button.admin-pagination__size-option.is-active {
+  background: #1976d2;
+  color: #fff;
+}
+
+.reports-section .dashboard-pagination .dashboard-pagination__nav > button.pagination-btn,
+.reports-section .dashboard-pagination .dashboard-pagination__numbers > button.pagination-number-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
+  font-family: inherit;
+  line-height: 1.25;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
